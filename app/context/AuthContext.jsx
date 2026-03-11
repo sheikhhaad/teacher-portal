@@ -7,9 +7,10 @@ const TeacherContext = createContext();
 
 export function TeacherProvider({ children }) {
   const [teacher, setTeacher] = useState(null);
-  const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // Initial load check is handled by the useEffect below
 
   useEffect(() => {
     const fetchTeacher = async () => {
@@ -30,9 +31,14 @@ export function TeacherProvider({ children }) {
     fetchTeacher();
   }, []);
 
+  const logout = () => {
+    api.post("/api/auth/logout");
+    localStorage.removeItem("course_id");
+    setTeacher(null);
+  };
   return (
     <TeacherContext.Provider
-      value={{ notifications, teacher, setTeacher, loading, error }}
+      value={{ teacher, setTeacher, loading, error, logout }}
     >
       {children}
     </TeacherContext.Provider>

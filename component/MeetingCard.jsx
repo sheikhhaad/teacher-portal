@@ -1,3 +1,5 @@
+import React, { useState } from "react";
+import Button from "@/component/Button";
 import {
   Video,
   Calendar,
@@ -9,8 +11,18 @@ import {
 } from "lucide-react";
 
 const MONTHS = [
-  "Jan","Feb","Mar","Apr","May","Jun",
-  "Jul","Aug","Sep","Oct","Nov","Dec",
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
 ];
 
 const formatDate = (d) =>
@@ -51,6 +63,7 @@ const statusMeta = {
 };
 
 export default function MeetingCard({ meeting, onAccept }) {
+  const [isAccepting, setIsAccepting] = useState(false);
   const now = Date.now();
 
   const start = new Date(meeting.session_start);
@@ -62,11 +75,16 @@ export default function MeetingCard({ meeting, onAccept }) {
     status = "expired";
   }
 
+  const handleAccept = async () => {
+    setIsAccepting(true);
+    await onAccept(meeting._id);
+    setIsAccepting(false);
+  };
+
   const meta = statusMeta[status] ?? statusMeta.pending;
 
   return (
     <div className="group relative bg-white rounded-[1.75rem] overflow-hidden transition-all duration-300 hover:-translate-y-1 premium-panel hover:shadow-xl">
-      
       {/* top strip */}
       <div
         className="h-1 w-full"
@@ -76,7 +94,6 @@ export default function MeetingCard({ meeting, onAccept }) {
       />
 
       <div className="p-6 flex flex-col lg:flex-row lg:items-center gap-6">
-
         {/* date block */}
         <div
           className="hidden sm:flex flex-col items-center justify-center w-20 h-20 rounded-2xl shrink-0 select-none"
@@ -97,9 +114,7 @@ export default function MeetingCard({ meeting, onAccept }) {
 
         {/* info */}
         <div className="flex-1 space-y-3 min-w-0">
-
           <div className="flex flex-wrap items-center gap-2">
-
             <span
               className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ring-1 ${meta.pill}`}
             >
@@ -114,7 +129,6 @@ export default function MeetingCard({ meeting, onAccept }) {
               <Clock size={12} className="text-gray-300" />
               {meeting.duration} min session
             </span>
-
           </div>
 
           <h3 className="text-lg font-black text-gray-900 group-hover:text-indigo-600 transition-colors truncate">
@@ -122,7 +136,6 @@ export default function MeetingCard({ meeting, onAccept }) {
           </h3>
 
           <div className="flex flex-wrap gap-x-5 gap-y-1.5">
-
             <span className="flex items-center gap-1.5 text-xs text-gray-500 font-medium">
               <User size={13} className="text-gray-300 shrink-0" />
               Student ···{meeting.student_id?.slice(-6)}
@@ -140,15 +153,14 @@ export default function MeetingCard({ meeting, onAccept }) {
 
             <span className="flex items-center gap-1.5 text-xs text-gray-500 font-medium">
               <Clock size={13} className="text-gray-300 shrink-0" />
-              {formatTime(meeting.session_start)} – {formatTime(meeting.session_end)}
+              {formatTime(meeting.session_start)} –{" "}
+              {formatTime(meeting.session_end)}
             </span>
-
           </div>
         </div>
 
         {/* actions */}
         <div className="flex flex-col sm:flex-row gap-3 shrink-0">
-
           {meeting.meeting_link && status !== "expired" && (
             <a
               href={meeting.meeting_link}
@@ -163,21 +175,15 @@ export default function MeetingCard({ meeting, onAccept }) {
           )}
 
           {status === "pending" && (
-            <button
-              onClick={() => onAccept(meeting._id)}
-              className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all hover:-translate-y-0.5 active:translate-y-0"
-              style={{
-                background: "#f0fdf4",
-                color: "#059669",
-                border: "1.5px solid #a7f3d0",
-                boxShadow: "0 2px 8px rgba(16,185,129,.08)",
-              }}
+            <Button
+              onClick={handleAccept}
+              variant="success"
+              isLoading={isAccepting}
+              icon={CheckCircle}
             >
-              <CheckCircle size={16} />
               Accept
-            </button>
+            </Button>
           )}
-
         </div>
       </div>
     </div>

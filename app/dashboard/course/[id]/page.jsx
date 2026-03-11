@@ -35,6 +35,7 @@ const Page = () => {
   const [answer, setAnswer] = useState("");
   const [status, setStatus] = useState("pending");
   const [isAnnouncementOpen, setIsAnnouncementOpen] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
 
   const handleAnnouncementSubmit = async (data) => {
     try {
@@ -54,7 +55,7 @@ const Page = () => {
       setIsInitializing(true);
       const data = await fetchCourseQueries(id, teacher?._id);
       console.log(data);
-      
+
       setLocalQueries(data);
       setIsInitializing(false);
     };
@@ -69,6 +70,7 @@ const Page = () => {
   };
 
   const updateQuery = async () => {
+    setIsUpdating(true);
     try {
       await api.put(`/api/queries/${selectedQuery._id}`, {
         answer,
@@ -81,6 +83,8 @@ const Page = () => {
       setLocalQueries(updatedData);
     } catch (err) {
       console.error(err);
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -101,17 +105,17 @@ const Page = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50/50 p-4 sm:p-6 lg:p-8">
+    <div className="h-full bg-gray-50/50 p-4 sm:p-6 lg:p-8">
       <div className="max-w-6xl mx-auto space-y-8">
         {/* Header Section */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 pt-2">
           <div className="flex items-center gap-4">
-            <button
+            <Button
+              variant="secondary"
+              size="icon"
               onClick={() => router.back()}
-              className="w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-gray-100 shadow-sm hover:shadow-md transition-all text-gray-500 hover:text-indigo-600"
-            >
-              <ArrowLeft size={18} />
-            </button>
+              icon={ArrowLeft}
+            />
             <div>
               <h1
                 className="text-3xl font-black text-gray-900 leading-tight"
@@ -126,12 +130,6 @@ const Page = () => {
           </div>
 
           <div className="flex flex-col sm:flex-row gap-3">
-            <Button
-              onClick={() => router.push(`/dashboard/meetings`)}
-              icon={Video}
-            >
-              View Meeting Schedule
-            </Button>
             <Button
               onClick={() => setIsAnnouncementOpen(true)}
               icon={Megaphone}
@@ -306,11 +304,17 @@ const Page = () => {
               </div>
 
               <div className="p-6 bg-gray-50 flex justify-end gap-3 border-t border-gray-100">
-                <Button onClick={() => setModalOpen(false)} variant="ghost">
+                <Button
+                  onClick={() => setModalOpen(false)}
+                  variant="ghost"
+                  disabled={isUpdating}
+                >
                   Discard Changes
                 </Button>
 
-                <Button onClick={updateQuery}>Submit Response</Button>
+                <Button onClick={updateQuery} isLoading={isUpdating}>
+                  Submit Response
+                </Button>
               </div>
             </div>
           </div>

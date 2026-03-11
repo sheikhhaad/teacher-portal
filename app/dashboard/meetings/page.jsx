@@ -20,6 +20,7 @@ import SlotModal from "@/component/SlotModal";
 import MeetingCard from "@/component/MeetingCard";
 import Loading from "@/component/Loading";
 import ErrorMessage from "@/component/Error";
+import Button from "@/component/Button";
 
 const statusMeta = {
   pending: {
@@ -90,17 +91,17 @@ export default function MeetingsPage() {
 
   return (
     <>
-      <div className="min-h-screen p-4 sm:p-6 lg:p-10">
+      <div className="h-full p-4 sm:p-6 lg:p-10">
         <div className="max-w-6xl mx-auto space-y-8">
           {/* ── header ── */}
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 pt-2">
             <div className="flex items-center gap-4">
-              <button
+              <Button
+                variant="secondary"
+                size="icon"
                 onClick={() => router.back()}
-                className="w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-gray-100 shadow-sm hover:shadow-md transition-all text-gray-500 hover:text-indigo-600"
-              >
-                <ArrowLeft size={18} />
-              </button>
+                icon={ArrowLeft}
+              />
               <div>
                 <p className="text-[11px] font-black uppercase tracking-widest text-indigo-400 mb-0.5">
                   Teacher Dashboard
@@ -117,15 +118,14 @@ export default function MeetingsPage() {
               </div>
             </div>
 
-            <button
-              className="premium-gradient flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-white transition-all hover:-translate-y-0.5 active:translate-y-0"
-              onClick={openSlotModal}
+            <Button
+              variant="primary"
+              onClick={() => router.push("/dashboard/slots")}
+              icon={Plus}
             >
-              <Plus size={16} />
               Add Your Availability Slots
-            </button>
+            </Button>
           </div>
-          <SlotModal isOpen={isSlotModalOpen} onClose={closeSlotModal} />
 
           {/* ── stats ── */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -150,7 +150,7 @@ export default function MeetingsPage() {
           </div>
 
           {/* ── list panel ── */}
-          <div className="bg-white rounded-[2rem] overflow-hidden premium-panel">
+          <div className="bg-white rounded-3xl overflow-hidden premium-panel shadow-sm border border-gray-100">
             {/* toolbar */}
             <div
               className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-8 py-5"
@@ -230,84 +230,6 @@ export default function MeetingsPage() {
             </div>
           </div>
         </div>
-      </div>
-
-      {/* ── slots ── */}
-      <div className="p-6 lg:p-8">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h2 className="text-xl font-black text-gray-800">
-              Your Availability Slots
-            </h2>
-            <p className="text-sm text-gray-400 mt-1">
-              Manage your open slots for student bookings
-            </p>
-          </div>
-          <button
-            onClick={openSlotModal}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-white transition-all hover:-translate-y-0.5 active:translate-y-0"
-            style={{ background: "linear-gradient(135deg,#6366f1,#4f46e5)" }}
-          >
-            <Plus size={16} />
-            Add Slot
-          </button>
-        </div>
-
-        {loading ? (
-          <Loading />
-        ) : slots.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-gray-500">No availability slots created yet.</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {slots.map((slot) => (
-              <div
-                key={slot._id}
-                className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm hover:shadow-md transition-all"
-              >
-                <div className="flex items-center justify-between mb-4">
-                  <span className="text-xs font-black uppercase tracking-widest text-indigo-500">
-                    {slot.day}
-                  </span>
-                  <span
-                    className={`px-2 py-1 rounded-full text-[10px] font-bold ${
-                      slot.isBooked
-                        ? "bg-red-50 text-red-600"
-                        : "bg-green-50 text-green-600"
-                    }`}
-                  >
-                    {slot.isBooked ? "Booked" : "Available"}
-                  </span>
-                </div>
-
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-sm text-gray-700">
-                    <Clock size={14} className="text-gray-400" />
-                    <span>
-                      {slot.startTime} - {slot.endTime}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-gray-700">
-                    <Calendar size={14} className="text-gray-400" />
-                    <span>{slot.date}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-gray-700">
-                    <Video size={14} className="text-gray-400" />
-                    <span>{slot.duration} mins</span>
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => deleteSlot(slot._id)}
-                  className="mt-4 w-full py-2 rounded-xl text-sm font-bold text-red-500 hover:bg-red-50 transition-colors"
-                >
-                  Delete Slot
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
       </div>
     </>
   );

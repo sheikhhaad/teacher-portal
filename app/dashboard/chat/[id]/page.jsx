@@ -18,9 +18,10 @@ import {
   MoreVertical,
   BookOpen,
 } from "lucide-react";
-import axios from "axios";
+import api from "@/utils/api";
 import { useQueries } from "@/app/context/QueryContext";
 import { useTeacher } from "@/app/context/AuthContext";
+import Button from "@/component/Button";
 
 const TeacherQueryDetail = () => {
   const { id } = useParams();
@@ -71,10 +72,7 @@ const TeacherQueryDetail = () => {
 
     setFetchingMessages(true);
     try {
-      const res = await axios.get(
-        `https://stu-portal-backend.vercel.app/api/messages/${query._id}`,
-        { withCredentials: true },
-      );
+      const res = await api.get(`/api/messages/${query._id}`);
 
       if (res.data && res.data.length > 0) {
         // Transform messages to match your format
@@ -118,7 +116,7 @@ const TeacherQueryDetail = () => {
 
     setSending(true);
     try {
-      const res = await axios.post(`http://localhost:3000/api/messages/send`, {
+      const res = await api.post(`/api/messages/send`, {
         query_id: id,
         sender_id: teacher._id,
         sender_role: "teacher",
@@ -264,13 +262,13 @@ const TeacherQueryDetail = () => {
           <p className="text-gray-500 mb-6">
             The query you are looking for does not exist or has been removed.
           </p>
-          <button
+          <Button
+            variant="primary"
             onClick={() => router.back()}
-            className="inline-flex items-center px-6 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all shadow-lg hover:shadow-xl"
+            icon={ChevronLeft}
           >
-            <ChevronLeft className="h-5 w-5 mr-2" />
             Back to All Queries
-          </button>
+          </Button>
         </div>
       </div>
     );
@@ -281,15 +279,14 @@ const TeacherQueryDetail = () => {
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 animate-fade-in">
       {/* Back Navigation */}
-      <button
+      <Button
+        variant="secondary"
         onClick={() => router.back()}
-        className="group inline-flex items-center text-gray-600 hover:text-indigo-600 mb-6 transition-all"
+        icon={ChevronLeft}
+        className="mb-6"
       >
-        <div className="p-1 rounded-lg group-hover:bg-indigo-50 transition-colors">
-          <ChevronLeft className="h-5 w-5" />
-        </div>
-        <span className="font-medium">Back to Queries</span>
-      </button>
+        Back to Queries
+      </Button>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main Content - Chat */}
@@ -321,21 +318,19 @@ const TeacherQueryDetail = () => {
 
                 {/* Status Badge with Dropdown */}
                 <div className="relative" ref={statusDropdownRef}>
-                  <button
+                  <Button
+                    variant="outline"
                     onClick={() => setShowStatusDropdown(!showStatusDropdown)}
-                    disabled={updatingStatus}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-xl border transition-all ${statusColors.bg} ${statusColors.border} ${statusColors.text} hover:shadow-md`}
+                    isLoading={updatingStatus}
+                    className={`capitalize ${statusColors.text} ${statusColors.border} ${statusColors.bg}`}
+                    icon={status === updatingStatus ? null : MoreVertical}
+                    iconPosition="right"
                   >
-                    {getStatusIcon(query.status)}
-                    <span className="font-medium capitalize">
+                    <span className="flex items-center gap-2">
+                      {getStatusIcon(query.status)}
                       {query.status}
                     </span>
-                    {updatingStatus ? (
-                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-current border-t-transparent"></div>
-                    ) : (
-                      <MoreVertical className="h-4 w-4" />
-                    )}
-                  </button>
+                  </Button>
 
                   {/* Status Dropdown */}
                   {showStatusDropdown && (
@@ -505,22 +500,14 @@ const TeacherQueryDetail = () => {
                       <Paperclip className="h-5 w-5" />
                     </button>
                   </div>
-                  <button
+                  <Button
                     type="submit"
-                    disabled={!message.trim() || sending}
-                    className={`p-3 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 transition-all shadow-md ${
-                      !message.trim() || sending
-                        ? "opacity-50 cursor-not-allowed"
-                        : "hover:shadow-lg transform hover:-translate-y-0.5"
-                    }`}
-                    title="Send message"
-                  >
-                    {sending ? (
-                      <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
-                    ) : (
-                      <Send className="h-5 w-5" />
-                    )}
-                  </button>
+                    disabled={!message.trim()}
+                    isLoading={sending}
+                    variant="primary"
+                    size="icon"
+                    icon={Send}
+                  />
                 </div>
                 <p className="text-xs text-gray-400 mt-3 text-center">
                   Press Enter to send • Shift + Enter for new line

@@ -1,28 +1,36 @@
 import { useTeacher } from "@/app/context/AuthContext";
-import axios from "axios";
+import { useSession } from "@/app/context/SessionContext";
+import Button from "@/component/Button";
 import React, { useState } from "react";
 
 const SlotModal = ({ isOpen, onClose }) => {
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
   const [date, setDate] = useState("");
-  let { teacher } = useTeacher();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { teacher } = useTeacher();
+  const { addSlot } = useSession();
+
   if (!isOpen) return null;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setIsSubmitting(true);
     const data = {
       start_time: startTime,
       end_time: endTime,
       date: date,
       teacher_id: teacher._id,
     };
-    let res = await axios.post(
-      "http://localhost:8000/api/availability/create",
-      data,
-    );
-    console.log(res.data);
-    onClose();
+
+    try {
+      await addSlot(data);
+      onClose();
+    } catch (err) {
+      console.error("Failed to add slot:", err);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -69,20 +77,18 @@ const SlotModal = ({ isOpen, onClose }) => {
             />
           </div>
           <div className="flex justify-end gap-3 pt-2">
-            <button
+            <Button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 border rounded-lg text-sm"
+              variant="secondary"
+              disabled={isSubmitting}
             >
               Cancel
-            </button>
+            </Button>
 
-            <button
-              type="submit"
-              className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm"
-            >
+            <Button type="submit" variant="primary" isLoading={isSubmitting}>
               Save Slot
-            </button>
+            </Button>
           </div>
         </form>
       </div>

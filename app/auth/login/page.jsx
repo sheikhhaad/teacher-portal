@@ -1,30 +1,56 @@
 "use client";
-import axios from "axios";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTeacher } from "@/app/context/AuthContext";
+import api from "@/utils/api";
+import Button from "@/component/Button";
 
 const page = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const { setTeacher } = useTeacher();
   const router = useRouter();
-  const handleLogin = async () => {
-    let res = await axios.post(
-      "http://localhost:8000/api/auth/teacher/login",
-      {
-        email,
-        password,
-      },
-      {
-        withCredentials: true,
-      },
-    );
-    console.log(res.data.teacher.course_id);
-    localStorage.setItem("course_id", JSON.stringify(res.data.teacher.course_id));
-    setTeacher(res.data.teacher);
-    router.push("/dashboard");
+
+  const [error, setError] = useState("");
+
+  const handleLogin = async (e) => {
+    e?.preventDefault();
+    setIsLoading(true);
+    setError("");
+    try {
+      let res = await api.post(
+        "/api/auth/teacher/login",
+        {
+          email,
+          password,
+        },
+        {
+          withCredentials: true,
+        },
+      );
+
+      if (res.data?.teacher) {
+        localStorage.setItem(
+          "course_id",
+          JSON.stringify(res.data.teacher.course_id),
+        );
+        setTeacher(res.data.teacher);
+        router.push("/dashboard");
+      } else {
+        setError("Invalid response from server");
+      }
+    } catch (err) {
+      console.error(err);
+      setError(
+        err.response?.data?.message ||
+          "Login failed. Please check your credentials.",
+      );
+    } finally {
+      setIsLoading(false);
+    }
   };
+
   return (
     <>
       <div className="flex items-center justify-center h-screen">
@@ -47,10 +73,16 @@ const page = () => {
           </div>
 
           <h3 className="mb-6 text-center text-xl font-bold text-gray-800">
-            Quick Login
+            Teacher Login
           </h3>
 
-          <form>
+          {error && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-lg text-sm font-medium">
+              {error}
+            </div>
+          )}
+
+          <form onSubmit={handleLogin}>
             <div className="mb-4">
               <label className="mb-1 block text-sm font-medium text-gray-700">
                 Email
@@ -77,13 +109,14 @@ const page = () => {
               />
             </div>
 
-            <button
-              type="button"
-              onClick={handleLogin}
-              className="w-full rounded-lg bg-blue-500 px-4 py-2 font-medium text-white transition duration-300 hover:bg-blue-600"
+            <Button
+              type="submit"
+              isLoading={isLoading}
+              className="w-full mt-2"
+              variant="primary"
             >
               Sign In
-            </button>
+            </Button>
 
             <div className="mt-4 text-center">
               <a href="#" className="text-sm text-blue-500 hover:text-blue-600">
