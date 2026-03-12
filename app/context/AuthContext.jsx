@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useEffect } from "react";
 import api from "@/utils/api";
+import { useRouter } from "next/navigation";
 
 const TeacherContext = createContext();
 
@@ -10,35 +11,50 @@ export function TeacherProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Initial load check is handled by the useEffect below
+  const router = useRouter();
 
   useEffect(() => {
     const fetchTeacher = async () => {
       try {
-        const storedTeacher = localStorage.getItem("course_id");
-        if (storedTeacher) {
-          const course_id = JSON.parse(storedTeacher);
-          const res = await api.get(`/api/auth/teacher/${course_id}`);
-          setTeacher(res.data.teacher); // teacher object with _id
-        }
+        setError(null);
+
+        const res = await api.get("/api/auth/teacher/me");
+
+        setTeacher(res.data.teacher);
       } catch (err) {
-        console.error("Failed to fetch teacher:", err);
-        setError("Failed to load your profile.");
+        if (err.response?.status !== 401) {
+          console.error("Teacher fetch error", err);
+          setError("Failed to load profile");
+        }
       } finally {
         setLoading(false);
       }
     };
+
     fetchTeacher();
   }, []);
 
-  const logout = () => {
-    api.post("/api/auth/logout");
-    localStorage.removeItem("course_id");
+  const logout = async () => {
+    try {
+      await api.post("/api/auth/logout");
+    } catch (err) {
+      console.error("Logout failed", err);
+    }
+
     setTeacher(null);
+
+    router.push("/auth/login");
   };
+
   return (
     <TeacherContext.Provider
-      value={{ teacher, setTeacher, loading, error, logout }}
+      value={{
+        teacher,
+        setTeacher,
+        loading,
+        error,
+        logout,
+      }}
     >
       {children}
     </TeacherContext.Provider>
@@ -47,7 +63,10 @@ export function TeacherProvider({ children }) {
 
 export function useTeacher() {
   const context = useContext(TeacherContext);
-  if (!context)
-    throw new Error("useTeacher must be used within a TeacherProvider");
+
+  if (!context) {
+    throw new Error("useTeacher must be used within TeacherProvider");
+  }
+
   return context;
 }

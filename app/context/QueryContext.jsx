@@ -45,12 +45,10 @@ export function QueryProvider({ children }) {
   const fetchCourseQueries = useCallback(
     async (courseId, teacherId) => {
       if (!teacherId || !courseId) return [];
-      console.log(courseId, teacherId);
       try {
         const res = await api.get(
           `/api/queries/teacher/${teacherId}/course/${courseId}`,
         );
-        console.log(res.data);
         return Array.isArray(res.data) ? res.data : res.data.queries || [];
       } catch (err) {
         console.error("Fetch course queries failed:", err);

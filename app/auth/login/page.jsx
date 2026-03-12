@@ -29,13 +29,7 @@ const page = () => {
           withCredentials: true,
         },
       );
-
       if (res.data?.teacher) {
-        localStorage.setItem(
-          "course_id",
-          JSON.stringify(res.data.teacher.course_id),
-        );
-        setTeacher(res.data.teacher);
         router.push("/dashboard");
       } else {
         setError("Invalid response from server");
