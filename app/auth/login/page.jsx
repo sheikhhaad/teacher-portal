@@ -20,16 +20,14 @@ const page = () => {
     setError("");
     try {
       let res = await api.post(
-        "/api/auth/teacher/login",
+        "api/auth/teacher/login",
         {
           email,
           password,
         },
-        {
-          withCredentials: true,
-        },
       );
       if (res.data?.teacher) {
+        setTeacher(res.data.teacher);
         router.push("/dashboard");
       } else {
         setError("Invalid response from server");

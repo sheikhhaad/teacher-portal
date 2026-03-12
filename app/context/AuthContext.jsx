@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, useEffect } from "react";
 import api from "@/utils/api";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 
 const TeacherContext = createContext();
 
@@ -10,21 +10,27 @@ export function TeacherProvider({ children }) {
   const [teacher, setTeacher] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
+  const pathname = usePathname();
   const router = useRouter();
 
   useEffect(() => {
     const fetchTeacher = async () => {
+      if (pathname.startsWith("/auth")) {
+        setLoading(false);
+        return;
+      }
+
       try {
-        setError(null);
-
-        const res = await api.get("/api/auth/teacher/me");
-
+        setLoading(true);
+        const res = await api.get("api/auth/teacher/me");
         setTeacher(res.data.teacher);
+        setError(null);
       } catch (err) {
-        if (err.response?.status !== 401) {
-          console.error("Teacher fetch error", err);
-          setError("Failed to load profile");
+        console.error("Fetch teacher failed:", err);
+        setTeacher(null);
+        // Only redirect if not already on login page and not just a network error
+        if (err.response?.status === 401) {
+          router.push("/auth/login");
         }
       } finally {
         setLoading(false);
@@ -32,8 +38,7 @@ export function TeacherProvider({ children }) {
     };
 
     fetchTeacher();
-  }, []);
-
+  }, [pathname, router]);
   const logout = async () => {
     try {
       await api.post("/api/auth/logout");

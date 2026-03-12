@@ -8,6 +8,13 @@ import { useCourse } from "@/app/context/CourseContext";
 import { useQueries } from "@/app/context/QueryContext";
 import LoadingComponent from "@/component/Loading";
 import ErrorMessage from "@/component/Error";
+import StatsCard from "@/component/StatsCard";
+import { 
+  CheckCircle2, 
+  MessageSquare, 
+  TrendingUp, 
+  AlertCircle 
+} from "lucide-react";
 
 export default function Home() {
   const {
@@ -20,40 +27,53 @@ export default function Home() {
 
   const { queries, fetchCourseQueries } = useQueries();
 
+  const isInitialLoading = teacherLoading || courseLoading;
+
   useEffect(() => {
-    if (!teacher || !course) return;
+    if (teacher?._id && course?._id) {
+      fetchCourseQueries(course._id, teacher._id);
+    }
+  }, [teacher?._id, course?._id, fetchCourseQueries]);
 
-    fetchCourseQueries(course._id, teacher._id);
-  }, [teacher, course]);
-
-  if (teacherLoading || courseLoading) {
+  if (isInitialLoading) {
     return (
-      <div className="h-full flex items-center justify-center">
-        <LoadingComponent message="Loading your dashboard..." />
+      <div className="min-h-[80vh] flex flex-col items-center justify-center p-6 text-center">
+        <LoadingComponent message="Preparing your dashboard..." />
       </div>
     );
   }
 
   if (teacherError || courseError) {
     return (
-      <div className="h-full flex items-center justify-center">
-        <ErrorMessage message={teacherError || courseError} />
+      <div className="min-h-[80vh] flex items-center justify-center p-6">
+        <ErrorMessage message={teacherError || courseError || "Failed to load dashboard data."} />
       </div>
     );
   }
 
   if (!teacher || !course) {
     return (
-      <div className="h-full flex items-center justify-center">
-        <ErrorMessage message="Unauthorized: No teacher or course loaded." />
+      <div className="min-h-[80vh] flex flex-col items-center justify-center p-6 text-center">
+        <div className="bg-amber-50 border border-amber-200 p-8 rounded-2xl max-w-md">
+          <h2 className="text-xl font-bold text-amber-800 mb-2">Access Restricted</h2>
+          <p className="text-amber-700">
+            We couldn't verify your access or course details. Please try logging in again.
+          </p>
+          <button 
+            onClick={() => window.location.href = '/auth/login'}
+            className="mt-6 px-6 py-2 bg-amber-600 text-white rounded-lg font-semibold hover:bg-amber-700 transition-colors"
+          >
+            Go to Login
+          </button>
+        </div>
       </div>
     );
   }
 
-  const resolvedCount = queries.filter((q) => q.status === "resolved").length;
+  const resolvedCount = (queries || []).filter((q) => q.status === "resolved").length;
 
   const resolutionRate =
-    queries.length > 0 ? Math.round((resolvedCount / queries.length) * 100) : 0;
+    queries?.length > 0 ? Math.round((resolvedCount / queries.length) * 100) : 0;
 
   return (
     <div className="p-4 sm:p-6 lg:p-10 max-w-7xl mx-auto space-y-8">
@@ -81,8 +101,35 @@ export default function Home() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div className="space-y-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <StatsCard 
+          icon={MessageSquare}
+          label="Total Queries"
+          value={queries?.length || 0}
+          accent="#6366f1"
+        />
+        <StatsCard 
+          icon={CheckCircle2}
+          label="Resolved"
+          value={resolvedCount}
+          accent="#10b981"
+        />
+        <StatsCard 
+          icon={TrendingUp}
+          label="Res. Rate"
+          value={`${resolutionRate}%`}
+          accent="#f59e0b"
+        />
+        <StatsCard 
+          icon={AlertCircle}
+          label="Pending"
+          value={(queries?.length || 0) - resolvedCount}
+          accent="#f43f5e"
+        />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-2 space-y-4">
           <div className="flex items-center justify-between px-2">
             <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
               <BookOpen size={24} className="text-indigo-600" />
@@ -91,6 +138,11 @@ export default function Home() {
           </div>
 
           <CourseCard course={course} />
+        </div>
+        
+        {/* Right column for quick actions or more stats if needed */}
+        <div className="space-y-4">
+           {/* Placeholder for future components like Recent queries mini-list */}
         </div>
       </div>
     </div>
