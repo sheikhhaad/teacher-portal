@@ -1,12 +1,12 @@
 "use client";
 import React from "react";
 import { usePathname } from "next/navigation";
-import { Bell, Search, Menu } from "lucide-react";
+import { Bell, Search, Menu, LogOut } from "lucide-react";
 import { useTeacher } from "@/app/context/AuthContext";
 
 export default function Topbar({ onMenuClick }) {
   const pathname = usePathname();
-  const { teacher } = useTeacher();
+  const { teacher, logout } = useTeacher();
 
   // Helper to get a nice title based on route
   const getPageTitle = () => {
@@ -32,9 +32,12 @@ export default function Topbar({ onMenuClick }) {
       </div>
 
       <div className="flex items-center gap-4 sm:gap-6">
-   
 
-     
+
+        <button onClick={logout} className="relative p-2.5 text-gray-400 hover:bg-gray-50 rounded-full transition-colors">
+          <LogOut size={20} />
+          <span className="absolute top-2 right-2.5 w-2 h-2 rounded-full bg-red-500 border-2 border-white" />
+        </button>
 
         <div className="hidden sm:flex items-center gap-3 pl-6 border-l border-gray-200">
           <div className="text-right">

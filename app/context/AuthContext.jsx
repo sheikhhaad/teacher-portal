@@ -13,6 +13,7 @@ export function TeacherProvider({ children }) {
   const pathname = usePathname();
   const router = useRouter();
 
+
   useEffect(() => {
     const fetchTeacher = async () => {
       if (pathname.startsWith("/auth")) {
