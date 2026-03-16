@@ -99,11 +99,11 @@ export default function MeetingCard({ meeting, onAccept }) {
           className="hidden sm:flex flex-col items-center justify-center w-20 h-20 rounded-2xl shrink-0 select-none"
           style={{ background: "#f5f5ff", border: "1.5px solid #e0e0f5" }}
         >
-          <span className="text-[10px] font-black uppercase tracking-widest text-indigo-400">
+          <span className="text-[10px] font-bold uppercase tracking-widest text-indigo-400">
             {MONTHS[start.getMonth()]}
           </span>
 
-          <span className="text-3xl font-black text-indigo-700 leading-none">
+          <span className="text-3xl font-bold text-indigo-700 leading-none">
             {start.getDate()}
           </span>
 
@@ -116,7 +116,7 @@ export default function MeetingCard({ meeting, onAccept }) {
         <div className="flex-1 space-y-3 min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <span
-              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ring-1 ${meta.pill}`}
+              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ring-1 ${meta.pill}`}
             >
               <span
                 className="w-1.5 h-1.5 rounded-full"
@@ -131,7 +131,7 @@ export default function MeetingCard({ meeting, onAccept }) {
             </span>
           </div>
 
-          <h3 className="text-lg font-black text-gray-900 group-hover:text-indigo-600 transition-colors truncate">
+          <h3 className="text-lg font-semibold text-gray-900 group-hover:text-indigo-600 transition-colors truncate">
             Session with Student
           </h3>
 

@@ -8,7 +8,7 @@ const CourseCard = ({ course }) => {
 
   return (
     <div
-      className="premium-panel bg-white p-6 hover:-translate-y-1 transition-all duration-300 cursor-pointer"
+      className="premium-panel max-w-xl rounded-2xl bg-white p-6 hover:-translate-y-1 transition-all duration-300 cursor-pointer"
       onClick={() => {
         router.push(`/dashboard/course/${course._id}`);
       }}
@@ -25,7 +25,7 @@ const CourseCard = ({ course }) => {
       </div>
 
       {/* Course Name */}
-      <h2 className="text-2xl font-bold text-gray-800 mb-4 flex items-center">
+      <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
         <BookOpen className="mr-3 text-indigo-600" size={24} />
         {course.name}
       </h2>

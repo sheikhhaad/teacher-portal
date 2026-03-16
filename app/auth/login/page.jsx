@@ -45,8 +45,8 @@ const page = () => {
 
   return (
     <>
-      <div className="flex items-center justify-center h-screen">
-        <div className="rounded-xl border border-gray-200 py-8 px-6 max-w-90 w-full">
+      <div className="flex items-center justify-center min-h-screen bg-[#f7f7fb] p-4">
+        <div className="rounded-2xl border border-gray-100 bg-white py-10 px-8 max-w-md w-full premium-panel shadow-sm">
           <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-blue-100">
             <svg
               className="h-8 w-8 text-blue-500"
@@ -64,7 +64,7 @@ const page = () => {
             </svg>
           </div>
 
-          <h3 className="mb-6 text-center text-xl font-bold text-gray-800">
+          <h3 className="mb-8 text-center text-2xl font-bold text-gray-900 tracking-tight">
             Teacher Login
           </h3>
 

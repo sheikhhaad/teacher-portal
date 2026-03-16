@@ -8,13 +8,6 @@ import { useCourse } from "@/app/context/CourseContext";
 import { useQueries } from "@/app/context/QueryContext";
 import LoadingComponent from "@/component/Loading";
 import ErrorMessage from "@/component/Error";
-import StatsCard from "@/component/StatsCard";
-import { 
-  CheckCircle2, 
-  MessageSquare, 
-  TrendingUp, 
-  AlertCircle 
-} from "lucide-react";
 
 export default function Home() {
   const {
@@ -25,15 +18,8 @@ export default function Home() {
 
   const { course, error: courseError, loading: courseLoading } = useCourse();
 
-  const { queries, fetchCourseQueries } = useQueries();
 
   const isInitialLoading = teacherLoading || courseLoading;
-
-  useEffect(() => {
-    if (teacher?._id && course?._id) {
-      fetchCourseQueries(course._id, teacher._id);
-    }
-  }, [teacher?._id, course?._id, fetchCourseQueries]);
 
   if (isInitialLoading) {
     return (
@@ -70,16 +56,13 @@ export default function Home() {
     );
   }
 
-  const resolvedCount = (queries || []).filter((q) => q.status === "resolved").length;
 
-  const resolutionRate =
-    queries?.length > 0 ? Math.round((resolvedCount / queries.length) * 100) : 0;
-
+ 
   return (
-    <div className="p-4 sm:p-6 lg:p-10 max-w-7xl mx-auto space-y-8">
+    <div className="p-4 sm:p-6 lg:p-10 max-w-8xl mx-auto space-y-8">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 premium-panel bg-white p-8">
         <div>
-          <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">
+          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">
             Welcome back,
             <span className="text-indigo-600"> {teacher.name}</span>
           </h1>
@@ -101,32 +84,7 @@ export default function Home() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatsCard 
-          icon={MessageSquare}
-          label="Total Queries"
-          value={queries?.length || 0}
-          accent="#6366f1"
-        />
-        <StatsCard 
-          icon={CheckCircle2}
-          label="Resolved"
-          value={resolvedCount}
-          accent="#10b981"
-        />
-        <StatsCard 
-          icon={TrendingUp}
-          label="Res. Rate"
-          value={`${resolutionRate}%`}
-          accent="#f59e0b"
-        />
-        <StatsCard 
-          icon={AlertCircle}
-          label="Pending"
-          value={(queries?.length || 0) - resolvedCount}
-          accent="#f43f5e"
-        />
-      </div>
+   
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-4">
