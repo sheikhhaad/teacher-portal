@@ -100,9 +100,6 @@ export default function SlotsPage() {
                   className="group relative bg-white rounded-3xl p-6 border border-gray-100 shadow-sm hover:shadow-xl hover:scale-[1.02] transition-all duration-300"
                 >
                   <div className="flex items-center justify-between mb-6">
-                    <div className="px-3 py-1.5 rounded-xl bg-indigo-50 text-indigo-600 text-[10px] font-black uppercase tracking-wider">
-                      {slot.day}
-                    </div>
                     <div
                       className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider ${
                         slot.isBooked
@@ -148,7 +145,7 @@ export default function SlotsPage() {
                     onClick={() => deleteSlot(slot._id)}
                     variant="danger"
                     size="sm"
-                    className="w-full justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="w-full justify-center gap-2"
                     icon={Trash2}
                   >
                     Remove Slot
