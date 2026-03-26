@@ -10,6 +10,7 @@ import {
   Settings,
   LogOut,
   Calendar,
+  Bell,
 } from "lucide-react";
 import { useTeacher } from "@/app/context/AuthContext";
 
@@ -23,6 +24,7 @@ const SIDEBAR_LINKS = [
   },
   { name: "Meetings", href: "/dashboard/meetings", icon: Video },
   { name: "Slots", href: "/dashboard/slots", icon: Calendar },
+  { name: "Annoucement", href: "/dashboard/annoucement", icon: Bell },
 ];
 
 export default function Sidebar({ isOpen, onClose }) {
