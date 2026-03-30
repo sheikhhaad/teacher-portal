@@ -1,5 +1,7 @@
+// app/teacher/chat/[id]/page.jsx
 "use client";
-import React, { useState, useEffect, useRef } from "react";
+
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Send, ChevronLeft, MessageSquare, Loader2 } from "lucide-react";
 import { useChat } from "@/app/context/ChatContext";
@@ -10,7 +12,9 @@ const TeacherChatPage = () => {
   const router = useRouter();
   const studentId = id;
   const [message, setMessage] = useState("");
+  const [localSending, setLocalSending] = useState(false); // Add local sending state
   const messagesEndRef = useRef(null);
+  const textareaRef = useRef(null);
 
   const {
     messages,
@@ -23,33 +27,82 @@ const TeacherChatPage = () => {
 
   const { enrollMent } = useEnrollMent();
 
-  // Find the student details from the enrollment context to display their name
   const student = enrollMent?.students?.find((s) => s._id === studentId);
 
+  // ✅ Removed fetchMessages from dep array — it's a useCallback that
+  // only changes when teacher._id changes, not on every render.
+  // Including it caused double-fetches when the context re-rendered.
   useEffect(() => {
     if (studentId) {
       fetchMessages(studentId);
     }
     return () => {
-      clearMessages(); // Clear context data when leaving the chat
+      clearMessages();
     };
-  }, [studentId, fetchMessages]);
+  }, [studentId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
+  // Auto-scroll on new messages
   useEffect(() => {
-    scrollToBottom();
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // ✅ Auto-grow textarea as user types
+  useEffect(() => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    ta.style.height = "auto";
+    ta.style.height = `${Math.min(ta.scrollHeight, 150)}px`;
+  }, [message]);
+
+  // ✅ Filter out duplicate messages (optimistic + real)
+  const getUniqueMessages = useCallback((messagesList) => {
+    const uniqueMap = new Map();
+
+    messagesList.forEach((msg) => {
+      // Create a unique key using message content, timestamp, and sender
+      const key = `${msg.message}_${msg.createdAt}_${msg.sender_role}`;
+
+      // If this is an optimistic message and we have a real one with same content, skip the optimistic
+      if (msg._isOptimistic && uniqueMap.has(key)) {
+        const existing = uniqueMap.get(key);
+        if (!existing._isOptimistic) {
+          return; // Skip optimistic if real message exists
+        }
+      }
+
+      // Keep the real message over optimistic
+      if (
+        !uniqueMap.has(key) ||
+        (!msg._isOptimistic && uniqueMap.get(key)._isOptimistic)
+      ) {
+        uniqueMap.set(key, msg);
+      }
+    });
+
+    return Array.from(uniqueMap.values());
+  }, []);
+
+  const uniqueMessages = getUniqueMessages(messages);
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
-    if (!message.trim()) return;
+    if (!message.trim() || localSending || sending) return;
 
-    const success = await sendMessage(studentId, message);
-    if (success) {
-      setMessage("");
+    const text = message;
+    setLocalSending(true);
+    setMessage(""); // ✅ Clear immediately for snappy UX
+
+    try {
+      const success = await sendMessage(studentId, text);
+      if (!success) {
+        // Restore message text if send failed
+        setMessage(text);
+      }
+    } catch (error) {
+      console.error("Failed to send message:", error);
+      setMessage(text);
+    } finally {
+      setLocalSending(false);
     }
   };
 
@@ -75,19 +128,20 @@ const TeacherChatPage = () => {
 
       {/* Chat Section */}
       <div className="flex-1 bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden flex flex-col min-h-[600px] xl:min-h-0">
+        {/* Header */}
         <div className="px-6 py-5 border-b border-gray-100 bg-gradient-to-r from-indigo-50 via-white to-white flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div className="relative">
               <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg shadow-md border-2 border-white">
                 {student?.name ? student.name.charAt(0).toUpperCase() : "S"}
               </div>
-              <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 border-2 border-white rounded-full"></div>
+              <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 border-2 border-white rounded-full" />
             </div>
             <div>
               <h3 className="text-lg font-bold text-gray-800">
                 {student?.name || "Student"}
               </h3>
-              <p className="text-sm text-gray-500 flex items-center gap-1">
+              <p className="text-sm text-gray-500">
                 {student?.rollNumber && (
                   <span>Roll No: {student.rollNumber}</span>
                 )}
@@ -96,35 +150,40 @@ const TeacherChatPage = () => {
           </div>
           <div className="hidden sm:flex items-center gap-2">
             <span className="text-xs font-semibold bg-indigo-100 text-indigo-700 px-3 py-1.5 rounded-full shadow-sm">
-              {messages.length} Message{messages.length !== 1 ? "s" : ""}
+              {uniqueMessages.length} Message
+              {uniqueMessages.length !== 1 ? "s" : ""}
             </span>
           </div>
         </div>
 
-        {/* Messages Container */}
-        <div className="flex-1 p-6 overflow-y-auto bg-gray-50/50 relative">
-          {loading && messages.length === 0 ? (
+        {/* Messages */}
+        <div className="flex-1 p-6 overflow-y-auto bg-gray-50/50">
+          {loading && uniqueMessages.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-indigo-500">
               <Loader2 className="h-10 w-10 animate-spin mb-4" />
               <p className="text-gray-500 font-medium">
                 Loading conversation...
               </p>
             </div>
-          ) : messages.length > 0 ? (
+          ) : uniqueMessages.length > 0 ? (
             <div className="space-y-6">
-              {messages.map((msg, index) => {
+              {uniqueMessages.map((msg, index) => {
                 const isTeacher = msg.sender_role === "teacher";
                 const showAvatar =
                   index === 0 ||
-                  messages[index - 1]?.sender_role !== msg.sender_role;
+                  uniqueMessages[index - 1]?.sender_role !== msg.sender_role;
+
+                // ✅ Optimistic messages show with slight opacity so the
+                // user knows they're in-flight
+                const isOptimistic = msg._isOptimistic === true;
 
                 return (
                   <div
-                    key={msg._id || index}
+                    key={msg._id || `optimistic_${msg.createdAt}_${index}`}
                     className={`flex ${isTeacher ? "justify-end" : "justify-start"} animate-slide-up`}
                   >
                     <div
-                      className={`flex max-w-[85%] md:max-w-[75%] ${isTeacher ? "flex-row-reverse" : "flex-row"}`}
+                      className={`flex max-w-[85%] md:max-w-[75%] ${isTeacher ? "flex-row-reverse" : "flex-row"} ${isOptimistic ? "opacity-70" : "opacity-100"} transition-opacity duration-200`}
                     >
                       {/* Avatar */}
                       {showAvatar && (
@@ -145,14 +204,13 @@ const TeacherChatPage = () => {
                         </div>
                       )}
 
-                      {/* Spacer for continuity */}
                       {!showAvatar && (
                         <div
                           className={`flex-shrink-0 w-10 ${isTeacher ? "ml-3" : "mr-3"}`}
                         />
                       )}
 
-                      {/* Message Content */}
+                      {/* Bubble */}
                       <div>
                         {showAvatar && (
                           <div
@@ -177,11 +235,11 @@ const TeacherChatPage = () => {
                               : "bg-white text-gray-800 rounded-tl-none border border-gray-100"
                           }`}
                         >
-                          <p className="text-[15px] leading-relaxed whitespace-pre-wrap word-break break-words">
+                          <p className="text-[15px] leading-relaxed whitespace-pre-wrap break-words">
                             {msg.message}
                           </p>
                           <div
-                            className={`text-[10px] mt-2 text-right ${
+                            className={`text-[10px] mt-2 text-right flex items-center justify-end gap-1 ${
                               isTeacher ? "text-indigo-200" : "text-gray-400"
                             }`}
                           >
@@ -189,6 +247,10 @@ const TeacherChatPage = () => {
                               hour: "2-digit",
                               minute: "2-digit",
                             })}
+                            {/* ✅ Sending indicator for optimistic messages */}
+                            {isOptimistic && (
+                              <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                            )}
                           </div>
                         </div>
                       </div>
@@ -200,7 +262,7 @@ const TeacherChatPage = () => {
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center h-full text-center px-4">
-              <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center mx-auto mb-6 shadow-md border border-indigo-100 transform hover:scale-105 transition-transform duration-300">
+              <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center mx-auto mb-6 shadow-md border border-indigo-100 hover:scale-105 transition-transform duration-300">
                 <MessageSquare className="h-10 w-10 text-indigo-500" />
               </div>
               <h3 className="text-xl font-bold text-gray-800 mb-2">
@@ -214,31 +276,33 @@ const TeacherChatPage = () => {
           )}
         </div>
 
-        {/* Message Input */}
+        {/* Input */}
         <div className="p-4 sm:p-6 border-t border-gray-100 bg-white">
           <form onSubmit={handleSendMessage}>
             <div className="flex items-end gap-3 bg-gray-50 p-2 rounded-3xl border border-gray-100 focus-within:ring-2 focus-within:ring-indigo-100 focus-within:border-indigo-300 transition-all shadow-inner">
-              <div className="flex-1 relative">
+              <div className="flex-1">
                 <textarea
+                  ref={textareaRef}
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
                   onKeyDown={handleKeyDown}
                   placeholder="Type your message..."
                   rows="1"
-                  className="w-full px-4 py-3 bg-transparent border-none focus:ring-0 resize-none outline-none custom-scrollbar text-gray-700 placeholder-gray-400"
+                  disabled={localSending || sending}
+                  className="w-full px-4 py-3 bg-transparent border-none focus:ring-0 resize-none outline-none custom-scrollbar text-gray-700 placeholder-gray-400 disabled:opacity-50"
                   style={{ minHeight: "24px", maxHeight: "150px" }}
                 />
               </div>
               <button
                 type="submit"
-                disabled={!message.trim() || sending}
+                disabled={!message.trim() || localSending || sending}
                 className={`p-3.5 rounded-full flex items-center justify-center transition-all ${
-                  !message.trim() || sending
+                  !message.trim() || localSending || sending
                     ? "bg-gray-200 text-gray-400 cursor-not-allowed"
                     : "bg-indigo-600 text-white hover:bg-indigo-700 hover:shadow-lg shadow-md transform hover:-translate-y-0.5"
                 }`}
               >
-                {sending ? (
+                {localSending || sending ? (
                   <Loader2 className="h-5 w-5 animate-spin" />
                 ) : (
                   <Send className="h-5 w-5 ml-1" />
@@ -250,7 +314,7 @@ const TeacherChatPage = () => {
               <span className="text-gray-500 bg-gray-100 px-1 py-0.5 rounded">
                 Enter
               </span>{" "}
-              to send •
+              to send •{" "}
               <span className="text-gray-500 bg-gray-100 px-1 py-0.5 rounded ml-1">
                 Shift + Enter
               </span>{" "}

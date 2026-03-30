@@ -6,6 +6,7 @@ import api from "@/utils/api";
 import { useQueries } from "@/app/context/QueryContext";
 import { useTeacher } from "@/app/context/AuthContext";
 import Button from "@/component/Button";
+import socket from "@/utils/socket";
 
 const TeacherQueryDetail = () => {
   const { id } = useParams();
@@ -67,6 +68,38 @@ const TeacherQueryDetail = () => {
       fetchMessages();
     }
   }, [query?._id]);
+
+  // Listen for socket messages for this query
+  useEffect(() => {
+    if (!query?._id) return;
+
+    const handleReceiveMessage = (msg) => {
+      if (msg.query_id === query._id) {
+        setMessages((prev) => {
+          if (prev.find((m) => m.id === msg._id)) return prev;
+          
+          const formattedMessage = {
+            id: msg._id,
+            sender: msg.sender_role === "teacher"
+                ? teacher?.name || "You"
+                : msg.studentName || "Student",
+            senderRole: msg.sender_role,
+            content: msg.message,
+            timestamp: new Date(msg.createdAt).toLocaleString(),
+          };
+          return [...prev, formattedMessage];
+        });
+      }
+    };
+
+    socket.on("receive_query_message", handleReceiveMessage);
+    socket.on("receive_message", handleReceiveMessage);
+
+    return () => {
+      socket.off("receive_query_message", handleReceiveMessage);
+      socket.off("receive_message", handleReceiveMessage);
+    };
+  }, [query?._id, teacher]);
 
   const handleSendMessage = async (e) => {
     e.preventDefault();

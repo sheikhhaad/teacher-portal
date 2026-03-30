@@ -1,8 +1,10 @@
+// app/courses/[id]/page.jsx
 "use client";
+
 import { useTeacher } from "@/app/context/AuthContext";
 import { useQueries } from "@/app/context/QueryContext";
 import api from "@/utils/api";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { useParams } from "next/navigation";
 import {
   MessageSquare,
@@ -10,8 +12,6 @@ import {
   CheckCircle,
   AlertCircle,
   Send,
-  Plus,
-  Video,
   ArrowLeft,
   Megaphone,
 } from "lucide-react";
@@ -28,14 +28,62 @@ const Page = () => {
   const { teacher } = useTeacher();
   const router = useRouter();
   const { queries, loading, error, fetchCourseQueries } = useQueries();
-  const [localQueries, setLocalQueries] = useState([]);
+
   const [isInitializing, setIsInitializing] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedQuery, setSelectedQuery] = useState(null);
   const [answer, setAnswer] = useState("");
-  const [status, setStatus] = useState("pending");
   const [isAnnouncementOpen, setIsAnnouncementOpen] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
+
+  // ✅ Derive course-specific queries from context — updates automatically on socket events
+  const courseQueries = useMemo(
+    () => queries.filter((q) => q.course_id === id),
+    [queries, id],
+  );
+
+  // Initial fetch to populate context with this course's queries
+  useEffect(() => {
+    const initQueries = async () => {
+      setIsInitializing(true);
+      await fetchCourseQueries(id, teacher?._id);
+      setIsInitializing(false);
+    };
+
+    if (id && teacher?._id) {
+      initQueries();
+    }
+  }, [id, teacher?._id]);
+
+  const openModal = (query) => {
+    setSelectedQuery(query);
+    setAnswer(query.answer || "");
+    setModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setModalOpen(false);
+    setSelectedQuery(null);
+    setAnswer("");
+  };
+
+  const updateQuery = async () => {
+    if (!answer.trim()) return;
+    setIsUpdating(true);
+    try {
+      await api.put(`/api/queries/${selectedQuery._id}`, {
+        answer,
+        status: "resolved",
+      });
+      // ✅ No re-fetch needed — socket "update_query" updates context,
+      //    which triggers courseQueries to recompute via useMemo
+      closeModal();
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
 
   const handleAnnouncementSubmit = async (data) => {
     try {
@@ -50,51 +98,13 @@ const Page = () => {
     }
   };
 
-  useEffect(() => {
-    const initQueries = async () => {
-      setIsInitializing(true);
-      const data = await fetchCourseQueries(id, teacher?._id);
-      console.log(data);
-
-      setLocalQueries(data);
-      setIsInitializing(false);
-    };
-    initQueries();
-  }, [id, fetchCourseQueries, teacher?._id]);
-
-  const openModal = (query) => {
-    setSelectedQuery(query);
-    setAnswer(query.answer || "");
-    setStatus(query.status || "pending");
-    setModalOpen(true);
-  };
-
-  const updateQuery = async () => {
-    setIsUpdating(true);
-    try {
-      await api.put(`/api/queries/${selectedQuery._id}`, {
-        answer,
-        status: "resolved",
-      });
-
-      setModalOpen(false);
-
-      const updatedData = await fetchCourseQueries(id, teacher?._id);
-      setLocalQueries(updatedData);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setIsUpdating(false);
-    }
-  };
-
-  const pendingCount = localQueries.filter(
+  const pendingCount = courseQueries.filter(
     (q) => q.status === "pending",
   ).length;
-  const resolvedCount = localQueries.filter(
+  const resolvedCount = courseQueries.filter(
     (q) => q.status === "resolved",
   ).length;
-  const totalCount = localQueries.length;
+  const totalCount = courseQueries.length;
 
   if (error) {
     return (
@@ -107,7 +117,7 @@ const Page = () => {
   return (
     <div className="h-full bg-gray-50/50 p-4 sm:p-6 lg:p-8">
       <div className="max-w-6xl mx-auto space-y-8">
-        {/* Header Section */}
+        {/* Header */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 pt-2">
           <div className="flex items-center gap-4">
             <Button
@@ -128,7 +138,6 @@ const Page = () => {
               </p>
             </div>
           </div>
-
           <div className="flex flex-col sm:flex-row gap-3">
             <Button
               onClick={() => setIsAnnouncementOpen(true)}
@@ -138,7 +147,8 @@ const Page = () => {
             </Button>
           </div>
         </div>
-        {/* Stats Grid */}
+
+        {/* Stats */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
           <StatsCard
             icon={MessageSquare}
@@ -163,7 +173,7 @@ const Page = () => {
           />
         </div>
 
-        {/* Content Section */}
+        {/* Queries List */}
         <div className="bg-white rounded-4xl overflow-hidden premium-panel">
           <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-white text-gray-800">
             <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
@@ -175,7 +185,7 @@ const Page = () => {
           <div className="p-6">
             {isInitializing || loading ? (
               <Loading message="Fetching the latest queries..." />
-            ) : localQueries.length === 0 ? (
+            ) : courseQueries.length === 0 ? (
               <StateMessage
                 icon={MessageSquare}
                 title="No queries found"
@@ -183,7 +193,7 @@ const Page = () => {
               />
             ) : (
               <div className="grid grid-cols-1 gap-4">
-                {localQueries.map((q, idx) => (
+                {courseQueries.map((q) => (
                   <div
                     key={q._id}
                     className="group bg-white rounded-2xl border border-gray-100 p-5 hover:border-indigo-200 hover:shadow-md transition-all duration-300 relative overflow-hidden"
@@ -227,7 +237,6 @@ const Page = () => {
                       >
                         Reply / Update
                       </Button>
-                      
                     </div>
                   </div>
                 ))}
@@ -236,13 +245,13 @@ const Page = () => {
           </div>
         </div>
 
-        {/* Modal */}
+        {/* Reply Modal */}
         {modalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <div
               className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm"
-              onClick={() => setModalOpen(false)}
-            ></div>
+              onClick={closeModal}
+            />
 
             <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg relative z-10 overflow-hidden animate-in fade-in zoom-in duration-300">
               <div className="p-6 border-b border-gray-100 bg-indigo-50/50">
@@ -271,26 +280,27 @@ const Page = () => {
                     Your Response
                   </label>
                   <textarea
-                    className="w-full border-2 border-gray-100 focus:border-indigo-500 focus:ring-0 p-4 rounded-2xl min-h-[120px] transition-all"
+                    className="w-full border-2 border-gray-100 focus:border-indigo-500 focus:ring-0 p-4 rounded-2xl min-h-[120px] transition-all resize-none"
                     placeholder="Enter your clear and detailed answer here..."
                     value={answer}
                     onChange={(e) => setAnswer(e.target.value)}
                   />
                 </div>
-
-           
               </div>
 
               <div className="p-6 bg-gray-50 flex justify-end gap-3 border-t border-gray-100">
                 <Button
-                  onClick={() => setModalOpen(false)}
+                  onClick={closeModal}
                   variant="ghost"
                   disabled={isUpdating}
                 >
                   Discard Changes
                 </Button>
-
-                <Button onClick={updateQuery} isLoading={isUpdating}>
+                <Button
+                  onClick={updateQuery}
+                  isLoading={isUpdating}
+                  disabled={!answer.trim() || isUpdating}
+                >
                   Submit Response
                 </Button>
               </div>

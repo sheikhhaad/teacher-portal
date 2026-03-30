@@ -15,6 +15,7 @@ import {
   LogIn,
   Loader2,
 } from "lucide-react";
+import socket from "@/utils/socket";
 
 const Page = () => {
   const { teacher } = useTeacher();
@@ -26,7 +27,7 @@ const Page = () => {
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
 
-  // Fetch announcements
+  // Fetch announcements initially
   const fetchAnnouncements = async () => {
     if (!teacher?._id || !teacher?.course_id) {
       setLoading(false);
@@ -40,10 +41,8 @@ const Page = () => {
       const res = await api.get(
         `/api/announcements/${teacher._id}/course/${teacher.course_id}`,
       );
-
       setAnnouncements(Array.isArray(res.data) ? res.data : [res.data]);
     } catch (err) {
-      console.error("Error fetching announcements:", err);
       setError(err.response?.data?.message || "Failed to load announcements");
     } finally {
       setLoading(false);
@@ -54,6 +53,34 @@ const Page = () => {
     fetchAnnouncements();
   }, [teacher]);
 
+  useEffect(() => {
+    if (!teacher) return;
+
+    // New announcement
+    socket.on("new_announcement", (announcement) => {
+      if (announcement.course_id === teacher.course_id) {
+        setAnnouncements((prev) => [announcement, ...prev]);
+      }
+    });
+
+    // Updated announcement
+    socket.on("update_announcement", (updated) => {
+      setAnnouncements((prev) =>
+        prev.map((a) => (a._id === updated._id ? updated : a)),
+      );
+    });
+
+    // Deleted announcement
+    socket.on("delete_announcement", ({ id }) => {
+      setAnnouncements((prev) => prev.filter((a) => a._id !== id));
+    });
+
+    return () => {
+      socket.off("new_announcement");
+      socket.off("update_announcement");
+      socket.off("delete_announcement");
+    };
+  }, [teacher]);
   // Show temporary success message
   const showSuccess = (message) => {
     setSuccessMessage(message);
@@ -66,16 +93,12 @@ const Page = () => {
       const response = await api.delete(
         `/api/announcements/deleteannouncement/${announcementId}`,
       );
-
       if (response.status === 200) {
-        setAnnouncements((prev) =>
-          prev.filter((a) => a._id !== announcementId),
-        );
         setDeleteConfirm(null);
         showSuccess("Announcement deleted successfully");
+        // backend emits automatically → students updated
       }
     } catch (err) {
-      console.error("Error deleting announcement:", err);
       setError(err.response?.data?.message || "Failed to delete announcement");
       setTimeout(() => setError(null), 5000);
     }
@@ -92,25 +115,15 @@ const Page = () => {
     try {
       const response = await api.put(
         `/api/announcements/updateannouncement/${announcementId}`,
-        {
-          text: editText,
-        },
+        { text: editText },
       );
-
       if (response.status === 200) {
-        setAnnouncements((prev) =>
-          prev.map((a) =>
-            a._id === announcementId
-              ? { ...a, text: editText, updatedAt: new Date().toISOString() }
-              : a,
-          ),
-        );
         setEditingAnnouncement(null);
         setEditText("");
         showSuccess("Announcement updated successfully");
+        // backend emits automatically → students updated
       }
     } catch (err) {
-      console.error("Error updating announcement:", err);
       setError(err.response?.data?.message || "Failed to update announcement");
       setTimeout(() => setError(null), 5000);
     }
@@ -343,39 +356,6 @@ const Page = () => {
           </div>
         )}
       </div>
-
-      <style jsx>{`
-        @keyframes slide-down {
-          from {
-            opacity: 0;
-            transform: translateY(-10px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        @keyframes fade-in-up {
-          from {
-            opacity: 0;
-            transform: translateY(20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        .animate-slide-down {
-          animation: slide-down 0.3s ease-out;
-        }
-
-        .animate-fade-in-up {
-          animation: fade-in-up 0.5s ease-out forwards;
-          opacity: 0;
-        }
-      `}</style>
     </div>
   );
 };

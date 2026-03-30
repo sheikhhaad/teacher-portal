@@ -1,15 +1,7 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useSession } from "@/app/context/SessionContext";
-import {
-  Calendar,
-  Clock,
-  Video,
-  Plus,
-  Trash2,
-  AlertCircle,
-  LayoutGrid,
-} from "lucide-react";
+import { Calendar, Clock, Plus, Trash2, AlertCircle } from "lucide-react";
 import SlotModal from "@/component/SlotModal";
 import Loading from "@/component/Loading";
 import ErrorMessage from "@/component/Error";
@@ -18,11 +10,29 @@ import { useRouter } from "next/navigation";
 
 export default function SlotsPage() {
   const router = useRouter();
-  const { slots, loading, error, deleteSlot } = useSession();
+  const { slots, loading, error, deleteSlot, fetchSlots } = useSession();
   const [isSlotModalOpen, setIsSlotModalOpen] = useState(false);
+  const [deletingSlotId, setDeletingSlotId] = useState(null);
 
   const openSlotModal = () => setIsSlotModalOpen(true);
-  const closeSlotModal = () => setIsSlotModalOpen(false);
+  const closeSlotModal = () => {
+    setIsSlotModalOpen(false);
+    // Refresh slots after modal closes
+    fetchSlots();
+  };
+
+  const handleDeleteSlot = async (slotId) => {
+    if (window.confirm("Are you sure you want to delete this slot?")) {
+      setDeletingSlotId(slotId);
+      try {
+        await deleteSlot(slotId);
+      } catch (error) {
+        console.error("Failed to delete slot:", error);
+      } finally {
+        setDeletingSlotId(null);
+      }
+    }
+  };
 
   if (error) {
     return (
@@ -109,6 +119,11 @@ export default function SlotsPage() {
                     >
                       {slot.isBooked ? "Booked" : "Available"}
                     </div>
+                    {slot.isBooked && (
+                      <div className="text-xs text-gray-400">
+                        Booked by student
+                      </div>
+                    )}
                   </div>
 
                   <div className="space-y-4 mb-8">
@@ -135,20 +150,23 @@ export default function SlotsPage() {
                           Date
                         </p>
                         <p className="text-sm font-bold text-gray-700">
-                          {slot.date}
+                          {new Date(slot.date).toLocaleDateString()}
                         </p>
                       </div>
                     </div>
                   </div>
 
                   <Button
-                    onClick={() => deleteSlot(slot._id)}
+                    onClick={() => handleDeleteSlot(slot._id)}
                     variant="danger"
                     size="sm"
                     className="w-full justify-center gap-2"
                     icon={Trash2}
+                    disabled={deletingSlotId === slot._id || slot.isBooked}
                   >
-                    Remove Slot
+                    {deletingSlotId === slot._id
+                      ? "Deleting..."
+                      : "Remove Slot"}
                   </Button>
                 </div>
               ))}
