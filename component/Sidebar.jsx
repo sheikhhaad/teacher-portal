@@ -11,6 +11,7 @@ import {
   LogOut,
   Calendar,
   Bell,
+  MessageCircle,
 } from "lucide-react";
 import { useTeacher } from "@/app/context/AuthContext";
 
@@ -25,6 +26,7 @@ const SIDEBAR_LINKS = [
   { name: "Meetings", href: "/dashboard/meetings", icon: Video },
   { name: "Slots", href: "/dashboard/slots", icon: Calendar },
   { name: "Annoucement", href: "/dashboard/annoucement", icon: Bell },
+  { name: "Chat", href: "/dashboard/discuss", icon: MessageCircle },
 ];
 
 export default function Sidebar({ isOpen, onClose }) {
@@ -40,7 +42,7 @@ export default function Sidebar({ isOpen, onClose }) {
   };
 
   return (
-    <aside 
+    <aside
       className={`
         fixed inset-y-0 left-0 z-50 w-72 bg-white border-r border-gray-100 flex-col h-screen shrink-0 shadow-xl md:shadow-sm md:relative
         transition-transform duration-300 ease-in-out
@@ -63,13 +65,26 @@ export default function Sidebar({ isOpen, onClose }) {
             </p>
           </div>
         </div>
-        
+
         {/* Mobile Close Button */}
-        <button 
+        <button
           onClick={onClose}
           className="md:hidden p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg transition-colors"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
         </button>
       </div>
 

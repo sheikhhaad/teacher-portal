@@ -3,6 +3,8 @@ import { TeacherProvider } from "./context/AuthContext";
 import { CourseProvider } from "./context/CourseContext";
 import { QueryProvider } from "./context/QueryContext";
 import { SessionProvider } from "./context/SessionContext";
+import { EnrollMentProvider } from "./context/EnrollStuContext";
+import { ChatProvider } from "./context/ChatContext";
 
 export default function RootLayout({ children }) {
   return (
@@ -11,7 +13,11 @@ export default function RootLayout({ children }) {
         <TeacherProvider>
           <CourseProvider>
             <QueryProvider>
-              <SessionProvider>{children}</SessionProvider>
+              <SessionProvider>
+                <EnrollMentProvider>
+                  <ChatProvider>{children}</ChatProvider>
+                </EnrollMentProvider>
+              </SessionProvider>
             </QueryProvider>
           </CourseProvider>
         </TeacherProvider>

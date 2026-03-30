@@ -74,7 +74,7 @@ const Page = () => {
     try {
       await api.put(`/api/queries/${selectedQuery._id}`, {
         answer,
-        status,
+        status: "resolved",
       });
 
       setModalOpen(false);
@@ -227,14 +227,7 @@ const Page = () => {
                       >
                         Reply / Update
                       </Button>
-                      <Button
-                        onClick={() => router.push(`/dashboard/chat/${q._id}/`)}
-                        className="self-end sm:self-start"
-                        size="md"
-                        icon={MessageSquare}
-                      >
-                        Discuss
-                      </Button>
+                      
                     </div>
                   </div>
                 ))}
@@ -285,22 +278,7 @@ const Page = () => {
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-gray-700 uppercase tracking-wider">
-                    Update Status
-                  </label>
-                  <select
-                    className="w-full border-2 border-gray-100 focus:border-indigo-500 focus:ring-0 p-4 rounded-2xl transition-all appearance-none bg-no-repeat bg-[right_1.25rem_center] bg-[length:1em_1em]"
-                    value={status}
-                    onChange={(e) => setStatus(e.target.value)}
-                    style={{
-                      backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`,
-                    }}
-                  >
-                    <option value="pending">⏳ Stay Pending</option>
-                    <option value="resolved">✅ Mark as Resolved</option>
-                  </select>
-                </div>
+           
               </div>
 
               <div className="p-6 bg-gray-50 flex justify-end gap-3 border-t border-gray-100">
