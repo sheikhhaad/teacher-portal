@@ -11,6 +11,7 @@ import {
 import api from "@/utils/api";
 import { useTeacher } from "./AuthContext";
 import socket from "@/utils/socket";
+import toast from "react-hot-toast";
 
 const QueryContext = createContext();
 
@@ -87,16 +88,30 @@ export function QueryProvider({ children }) {
     if (!teacher?._id) return;
 
     const handleNewQuery = (query) => {
+      // Assuming teacher query logic - only toast for new ones that enter state
       setQueries((prev) => {
         if (prev.find((q) => q._id === query._id)) return prev;
+
+        // Use a timeout or move toast fully outside
+        // Moving outside: could get duplicate toasts if socket sends twice,
+        // but better than breaking React render rules.
+        setTimeout(() => toast.success("New student query received!"), 0);
+
         return [query, ...prev];
       });
     };
 
     const handleUpdateQuery = (updatedQuery) => {
-      setQueries((prev) =>
-        prev.map((q) => (q._id === updatedQuery._id ? updatedQuery : q)),
-      );
+      setQueries((prev) => {
+        const index = prev.findIndex((q) => q._id === updatedQuery._id);
+        if (index > -1) {
+          setTimeout(() => toast.success("A query has been updated."), 0);
+          const newQueries = [...prev];
+          newQueries[index] = updatedQuery;
+          return newQueries;
+        }
+        return prev;
+      });
     };
 
     const handleDeleteQuery = ({ _id }) => {

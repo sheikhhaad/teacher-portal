@@ -16,6 +16,10 @@ import {
   Loader2,
 } from "lucide-react";
 import socket from "@/utils/socket";
+import AnnouncementModal from "@/component/AnnouncementModal";
+import Button from "@/component/Button";
+import { useCourse } from "@/app/context/CourseContext";
+import toast from "react-hot-toast";
 
 const Page = () => {
   const { teacher } = useTeacher();
@@ -26,6 +30,8 @@ const Page = () => {
   const [editText, setEditText] = useState("");
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
+  const [isAnnouncementOpen, setIsAnnouncementOpen] = useState(false);
+  let { course } = useCourse();
 
   // Fetch announcements initially
   const fetchAnnouncements = async () => {
@@ -59,6 +65,7 @@ const Page = () => {
     // New announcement
     socket.on("new_announcement", (announcement) => {
       if (announcement.course_id === teacher.course_id) {
+        toast.success("A new announcement has been posted!");
         setAnnouncements((prev) => [announcement, ...prev]);
       }
     });
@@ -141,6 +148,19 @@ const Page = () => {
     setEditText("");
   };
 
+  const handleAnnouncementSubmit = async (data) => {
+    try {
+      await api.post(`/api/announcements/create`, {
+        teacher_id: teacher._id,
+        course_id: course?._id,
+        text: data.description,
+      });
+      setIsAnnouncementOpen(false);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   if (!teacher) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
@@ -182,6 +202,10 @@ const Page = () => {
           <p className="text-slate-600 mt-2">
             Important updates and information for your class
           </p>
+
+          <Button onClick={() => setIsAnnouncementOpen(true)} icon={Megaphone}>
+            Make An Announcement
+          </Button>
         </div>
 
         {/* Success Message */}
@@ -356,6 +380,11 @@ const Page = () => {
           </div>
         )}
       </div>
+      <AnnouncementModal
+        isOpen={isAnnouncementOpen}
+        onClose={() => setIsAnnouncementOpen(false)}
+        onSubmit={handleAnnouncementSubmit}
+      />
     </div>
   );
 };

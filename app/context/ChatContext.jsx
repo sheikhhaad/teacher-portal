@@ -12,6 +12,7 @@ import {
 import api from "@/utils/api";
 import { useTeacher } from "./AuthContext";
 import socket from "@/utils/socket";
+import toast from "react-hot-toast";
 
 const ChatContext = createContext();
 
@@ -112,10 +113,16 @@ export function ChatProvider({ children }) {
         return;
       }
 
+      // Notify user of an incoming message
+      if (newMessage.sender_role !== "teacher") {
+        toast.success("New message received!");
+      }
+
       setMessages((prev) => {
         // Deduplicate — ignore if already in list (could be our own
         // optimistic message that was already replaced)
         if (prev.find((m) => m._id === newMessage._id)) return prev;
+
         return [...prev, newMessage];
       });
     };

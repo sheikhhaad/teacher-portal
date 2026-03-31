@@ -19,7 +19,6 @@ import StatsCard from "@/component/StatsCard";
 import Button from "@/component/Button";
 import Loading from "@/component/Loading";
 import StateMessage from "@/component/StateMessage";
-import AnnouncementModal from "@/component/AnnouncementModal";
 import ErrorMessage from "@/component/Error";
 import { useRouter } from "next/navigation";
 
@@ -33,7 +32,6 @@ const Page = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedQuery, setSelectedQuery] = useState(null);
   const [answer, setAnswer] = useState("");
-  const [isAnnouncementOpen, setIsAnnouncementOpen] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
 
   // ✅ Derive course-specific queries from context — updates automatically on socket events
@@ -85,19 +83,6 @@ const Page = () => {
     }
   };
 
-  const handleAnnouncementSubmit = async (data) => {
-    try {
-      await api.post(`/api/announcements/create`, {
-        teacher_id: teacher._id,
-        course_id: id,
-        text: data.description,
-      });
-      setIsAnnouncementOpen(false);
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
   const pendingCount = courseQueries.filter(
     (q) => q.status === "pending",
   ).length;
@@ -137,14 +122,6 @@ const Page = () => {
                 Manage and respond to student questions efficiently.
               </p>
             </div>
-          </div>
-          <div className="flex flex-col sm:flex-row gap-3">
-            <Button
-              onClick={() => setIsAnnouncementOpen(true)}
-              icon={Megaphone}
-            >
-              Make An Announcement
-            </Button>
           </div>
         </div>
 
@@ -307,12 +284,6 @@ const Page = () => {
             </div>
           </div>
         )}
-
-        <AnnouncementModal
-          isOpen={isAnnouncementOpen}
-          onClose={() => setIsAnnouncementOpen(false)}
-          onSubmit={handleAnnouncementSubmit}
-        />
       </div>
     </div>
   );

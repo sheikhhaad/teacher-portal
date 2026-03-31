@@ -10,6 +10,7 @@ import {
 import api from "@/utils/api";
 import { useTeacher } from "./AuthContext";
 import socket from "@/utils/socket";
+import toast from "react-hot-toast";
 
 const SessionContext = createContext();
 
@@ -146,6 +147,7 @@ export function SessionProvider({ children }) {
       if (teacher_id === teacher._id) {
         setMeetings((prev) => {
           if (prev.find((m) => m._id === session._id)) return prev;
+          setTimeout(() => toast.success("New session request received!"), 0);
           return [session, ...prev];
         });
       }
@@ -155,6 +157,7 @@ export function SessionProvider({ children }) {
     const handleUpdateSessionStatus = (data) => {
       const { session, teacher_id, student_id } = data;
       if (teacher_id === teacher._id) {
+        toast.success(`Session status updated to: ${session.status}`);
         setMeetings((prev) =>
           prev.map((m) => (m._id === session._id ? session : m)),
         );
