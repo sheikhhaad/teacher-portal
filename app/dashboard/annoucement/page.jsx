@@ -109,6 +109,8 @@ const Page = () => {
       setError(err.response?.data?.message || "Failed to delete announcement");
       setTimeout(() => setError(null), 5000);
     }
+
+    fetchAnnouncements();
   };
 
   // Update announcement
@@ -134,18 +136,22 @@ const Page = () => {
       setError(err.response?.data?.message || "Failed to update announcement");
       setTimeout(() => setError(null), 5000);
     }
+
+    fetchAnnouncements();
   };
 
   // Start editing
   const startEditing = (announcement) => {
     setEditingAnnouncement(announcement._id);
     setEditText(announcement.text);
+    fetchAnnouncements();
   };
 
   // Cancel editing
   const cancelEditing = () => {
     setEditingAnnouncement(null);
     setEditText("");
+    fetchAnnouncements();
   };
 
   const handleAnnouncementSubmit = async (data) => {
@@ -159,6 +165,8 @@ const Page = () => {
     } catch (err) {
       console.error(err);
     }
+
+    fetchAnnouncements();
   };
 
   if (!teacher) {
