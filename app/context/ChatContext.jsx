@@ -30,15 +30,20 @@ export function ChatProvider({ children }) {
     async (studentId) => {
       if (!studentId || !teacher?._id) return;
 
-      // ✅ Set active chat before fetching so socket handler knows
-      // which chat is open
-      activeChatIdRef.current = `${studentId}_${teacher._id}`;
+      const newChatId = `${studentId}_${teacher._id}`;
+      
+      // Leave previous room if exists
+      if (activeChatIdRef.current && activeChatIdRef.current !== newChatId) {
+        socket.emit("leave_chat", activeChatIdRef.current);
+      }
+
+      // ✅ Set active chat and join server room
+      activeChatIdRef.current = newChatId;
+      socket.emit("join_chat", newChatId);
 
       try {
         setLoading(true);
         const res = await api.get(`/api/messages/${studentId}/${teacher._id}`);
-        // ✅ Removed redundant client-side filter — backend already
-        // returns only messages for this chat_id
         setMessages(Array.isArray(res.data) ? res.data : []);
       } catch (error) {
         console.error("Error fetching messages:", error);
@@ -49,6 +54,7 @@ export function ChatProvider({ children }) {
     },
     [teacher?._id],
   );
+
 
   const sendMessage = async (studentId, messageText) => {
     if (!messageText.trim() || !studentId || !teacher?._id) return false;
@@ -98,23 +104,19 @@ export function ChatProvider({ children }) {
   };
 
   const clearMessages = () => {
+    if (activeChatIdRef.current) {
+      socket.emit("leave_chat", activeChatIdRef.current);
+    }
     setMessages([]);
     activeChatIdRef.current = null; // ✅ clear active chat on unmount
   };
 
-  // ✅ Socket connection management
-  useEffect(() => {
-    if (teacher?._id) {
-      if (!socket.connected) {
-        socket.connect();
-      }
-      
-      // Notify server about the user (optional but recommended)
-      socket.emit("join_user", teacher._id);
-    }
 
+  // ✅ Socket connection management
+  // Connection and 'join' (user room) are now handled by NotificationContext
+  useEffect(() => {
     const handleReceiveMessage = (newMessage) => {
-      // Ignore messages not belonging to the currently open chat
+      // Safeguard: Ignore messages not belonging to the currently open chat
       if (
         activeChatIdRef.current &&
         newMessage.chat_id !== activeChatIdRef.current
@@ -122,11 +124,7 @@ export function ChatProvider({ children }) {
         return;
       }
 
-      // Notify user of an incoming message from students
-      if (newMessage.sender_role !== "teacher") {
-        toast.success(`New message from ${newMessage.student_name || "a student"}`);
-      }
-
+      // State update is still needed
       setMessages((prev) => {
         // Deduplicate
         if (prev.find((m) => m._id === newMessage._id)) return prev;
@@ -139,7 +137,8 @@ export function ChatProvider({ children }) {
     return () => {
       socket.off("receive_message", handleReceiveMessage);
     };
-  }, [teacher?._id]); // Re-register if teacher changes
+  }, []); // Teacher logic moved to NotificationContext
+
 
   return (
     <ChatContext.Provider

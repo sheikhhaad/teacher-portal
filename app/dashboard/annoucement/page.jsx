@@ -74,7 +74,6 @@ const Page = () => {
       // Check if this course is one of the teacher's courses
       const isTeacherCourse = courses?.some(c => String(c._id) === String(announcement.course_id));
       if (isTeacherCourse) {
-        toast.success("A new announcement has been posted!");
         // Only add to list if it's for the currently selected course
         if (String(announcement.course_id) === String(selectedCourseId)) {
           setAnnouncements((prev) => [announcement, ...prev]);

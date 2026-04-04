@@ -147,7 +147,6 @@ export function SessionProvider({ children }) {
       if (teacher_id === teacher._id) {
         setMeetings((prev) => {
           if (prev.find((m) => m._id === session._id)) return prev;
-          setTimeout(() => toast.success("New session request received!"), 0);
           return [session, ...prev];
         });
       }
@@ -157,7 +156,6 @@ export function SessionProvider({ children }) {
     const handleUpdateSessionStatus = (data) => {
       const { session, teacher_id, student_id } = data;
       if (teacher_id === teacher._id) {
-        toast.success(`Session status updated to: ${session.status}`);
         setMeetings((prev) =>
           prev.map((m) => (m._id === session._id ? session : m)),
         );
@@ -219,7 +217,7 @@ export function SessionProvider({ children }) {
       socket.off("new_slot", handleNewSlot);
       socket.off("delete_slot", handleDeleteSlot);
     };
-  }, [teacher]);
+  }, [teacher?._id]);
 
   const value = {
     meetings,

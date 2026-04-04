@@ -5,6 +5,7 @@ import { QueryProvider } from "./context/QueryContext";
 import { SessionProvider } from "./context/SessionContext";
 import { EnrollMentProvider } from "./context/EnrollStuContext";
 import { ChatProvider } from "./context/ChatContext";
+import { NotificationProvider } from "./context/NotificationContext";
 import { Toaster } from "react-hot-toast";
 
 export default function RootLayout({ children }) {
@@ -12,20 +13,23 @@ export default function RootLayout({ children }) {
     <html lang="en">
       <body>
         <TeacherProvider>
-            <CourseProvider>
-              <QueryProvider>
-                <SessionProvider>
-                  <EnrollMentProvider>
+          <EnrollMentProvider>
+            <NotificationProvider>
+              <CourseProvider>
+                <QueryProvider>
+                  <SessionProvider>
                     <ChatProvider>
                       <Toaster position="top-right" />
                       {children}
                     </ChatProvider>
-                  </EnrollMentProvider>
-                </SessionProvider>
-              </QueryProvider>
-            </CourseProvider>
+                  </SessionProvider>
+                </QueryProvider>
+              </CourseProvider>
+            </NotificationProvider>
+          </EnrollMentProvider>
         </TeacherProvider>
       </body>
     </html>
   );
 }
+
