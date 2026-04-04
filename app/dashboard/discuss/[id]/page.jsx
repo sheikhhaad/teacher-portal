@@ -25,8 +25,21 @@ const TeacherChatPage = () => {
     clearMessages,
   } = useChat();
 
-  const { students } = useEnrollMent();
-  const student = students?.find((s) => s._id === studentId);
+  const { teacherEnrollments } = useEnrollMent();
+
+  // Derive student info from enrollments — find the enrollment that contains this student
+  const student = (() => {
+    if (!teacherEnrollments || !studentId) return null;
+    for (const enroll of teacherEnrollments) {
+      const stu = enroll.student_id;
+      if (!stu) continue;
+      const stuId = typeof stu === "string" ? stu : stu._id;
+      if (stuId === studentId) {
+        return typeof stu === "string" ? { _id: stu } : stu;
+      }
+    }
+    return null;
+  })();
 
   // ✅ Removed fetchMessages from dep array — it's a useCallback that
   // only changes when teacher._id changes, not on every render.

@@ -3,7 +3,6 @@
 import { createContext, useContext, useState, useEffect } from "react";
 import api from "@/utils/api";
 import { useRouter, usePathname } from "next/navigation";
-import { useCourse } from "./CourseContext";
 
 const TeacherContext = createContext();
 
@@ -24,7 +23,7 @@ export function TeacherProvider({ children }) {
 
       try {
         setLoading(true);
-        const res = await api.get("api/auth/teacher/me");
+        const res = await api.get("/api/auth/teacher/me");
         setTeacher(res.data.teacher);
         setError(null);
       } catch (err) {

@@ -15,10 +15,11 @@ export const NotificationProvider = ({ children }) => {
 
   useEffect(() => {
     if (!teacher?._id) {
-       if (socket.connected) {
-         socket.disconnect();
-       }
-       return;
+      if (socket.connected) {
+        socket.disconnect();
+      }
+      setIsConnected(false);
+      return;
     }
 
     // Connect socket if not connected
@@ -38,15 +39,14 @@ export const NotificationProvider = ({ children }) => {
         // Join a global teachers room
         socket.emit("join", "teachers");
 
-        // ✅ IMPORTANT: Join all possible chat rooms globally to receive messages on all pages
+        // Join all possible chat rooms globally to receive messages on all pages
         if (teacherEnrollments && teacherEnrollments.length > 0) {
           teacherEnrollments.forEach((enroll) => {
-             const studentId = enroll.student_id?._id || enroll.student_id;
-             if (studentId) {
-               const chatId = `${studentId}_${teacher._id}`;
-               socket.emit("join_chat", chatId);
-               console.log("Joined global chat room:", chatId);
-             }
+            const studentId = enroll.student_id?._id || enroll.student_id;
+            if (studentId) {
+              const chatId = `${studentId}_${teacher._id}`;
+              socket.emit("join_chat", chatId);
+            }
           });
         }
       }
@@ -59,11 +59,10 @@ export const NotificationProvider = ({ children }) => {
 
     const onNewQuery = (query) => {
       toast.success("New query received from student!", { id: `new-query-${query._id}` });
-      // Optionally trigger data refresh in other contexts if needed
     };
 
     const onUpdateQuery = (query) => {
-       toast(`Query updated: ${query.status}`, { id: `update-query-${query._id}` });
+      toast(`Query updated: ${query.status}`, { id: `update-query-${query._id}` });
     };
 
     const onNewSessionRequest = (data) => {
@@ -75,13 +74,11 @@ export const NotificationProvider = ({ children }) => {
     };
     
     const onSlotDeleted = (data) => {
-      toast.error(`A slot was deleted by student/system.`, { id: "slot-deleted" });
-    }
+      toast.error("A slot was deleted.", { id: "slot-deleted" });
+    };
 
     const onReceiveMessage = (msg) => {
       if (msg.sender_role !== "teacher") {
-        // Use a generic id so only one message toast is visible at a time if preferred, 
-        // OR use specific id to show multiple.
         toast.success(`New message: ${msg.message?.substring(0, 30)}${msg.message?.length > 30 ? "..." : ""}`, { 
           id: `msg-${msg._id || Date.now()}`,
           duration: 4000
@@ -89,7 +86,6 @@ export const NotificationProvider = ({ children }) => {
       }
     };
     
-    // Some pages use this variant
     const onReceiveQueryMessage = (msg) => {
       if (msg.sender_role !== "teacher") {
         toast.success(`Query Update: ${msg.message?.substring(0, 30)}...`, { 
@@ -114,7 +110,7 @@ export const NotificationProvider = ({ children }) => {
     socket.on("receive_query_message", onReceiveQueryMessage);
     socket.on("new_announcement", onNewAnnouncement);
 
-    // If already connected, join room manually
+    // If already connected, join rooms manually
     if (socket.connected) {
       onConnect();
     }

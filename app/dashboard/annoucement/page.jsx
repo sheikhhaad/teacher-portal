@@ -69,36 +69,42 @@ const Page = () => {
   useEffect(() => {
     if (!teacher) return;
 
-    // New announcement
-    socket.on("new_announcement", (announcement) => {
-      // Check if this course is one of the teacher's courses
+    // New announcement — named handler for proper cleanup
+    const handleNewAnnouncement = (announcement) => {
       const isTeacherCourse = courses?.some(c => String(c._id) === String(announcement.course_id));
       if (isTeacherCourse) {
-        // Only add to list if it's for the currently selected course
         if (String(announcement.course_id) === String(selectedCourseId)) {
-          setAnnouncements((prev) => [announcement, ...prev]);
+          setAnnouncements((prev) => {
+            if (prev.find((a) => a._id === announcement._id)) return prev;
+            return [announcement, ...prev];
+          });
         }
       }
-    });
+    };
 
     // Updated announcement
-    socket.on("update_announcement", (updated) => {
+    const handleUpdateAnnouncement = (updated) => {
       setAnnouncements((prev) =>
         prev.map((a) => (a._id === updated._id ? updated : a)),
       );
-    });
+    };
 
     // Deleted announcement
-    socket.on("delete_announcement", ({ id }) => {
+    const handleDeleteAnnouncement = ({ id }) => {
       setAnnouncements((prev) => prev.filter((a) => a._id !== id));
-    });
+    };
+
+    socket.on("new_announcement", handleNewAnnouncement);
+    socket.on("update_announcement", handleUpdateAnnouncement);
+    socket.on("delete_announcement", handleDeleteAnnouncement);
 
     return () => {
-      socket.off("new_announcement");
-      socket.off("update_announcement");
-      socket.off("delete_announcement");
+      socket.off("new_announcement", handleNewAnnouncement);
+      socket.off("update_announcement", handleUpdateAnnouncement);
+      socket.off("delete_announcement", handleDeleteAnnouncement);
     };
   }, [teacher, courses, selectedCourseId]);
+
   // Show temporary success message
   const showSuccess = (message) => {
     setSuccessMessage(message);

@@ -50,7 +50,7 @@ export function EnrollMentProvider({ children }) {
 
     fetchEnrollments();
   }, [pathname, teacher?._id]);
-console.log(enrollments);
+
 
   return (
     <EnrollMentContext.Provider

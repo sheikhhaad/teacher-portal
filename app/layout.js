@@ -8,6 +8,11 @@ import { ChatProvider } from "./context/ChatContext";
 import { NotificationProvider } from "./context/NotificationContext";
 import { Toaster } from "react-hot-toast";
 
+export const metadata = {
+  title: "Teacher Portal",
+  description: "Professional teacher management portal",
+};
+
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
