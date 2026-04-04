@@ -1,25 +1,106 @@
 "use client";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useEnrollMent } from "@/app/context/EnrollStuContext";
 import { useRouter } from "next/navigation";
-import { MessageSquare, User, Loader2, ChevronRight } from "lucide-react";
+import { MessageSquare, User, Loader2, ChevronRight, BookOpen } from "lucide-react";
+import api from "@/utils/api";
 
 const Page = () => {
-  const { enrollMent, loading } = useEnrollMent();
+  const { teacherEnrollments, loading } = useEnrollMent();
+  const [students, setStudents] = useState([]);
+  const [coursesData, setCoursesData] = useState([]);
+  const [fetchingStudents, setFetchingStudents] = useState(false);
   const router = useRouter();
+
+  const fetchStudentsFromAllCourses = async () => {
+    if (!teacherEnrollments || teacherEnrollments.length === 0) {
+      setStudents([]);
+      setCoursesData([]);
+      return;
+    }
+
+    setFetchingStudents(true);
+    
+    try {
+      // Fetch students for each course in parallel
+      const coursePromises = teacherEnrollments.map(async (enrollment) => {
+        try {
+          const res = await api.get(`/api/enrollments/course/${enrollment.course_id}`);
+          
+          // Extract students from response (adjust based on your API response structure)
+          let courseStudents = [];
+          if (res.data?.students) {
+            courseStudents = res.data.students;
+          } else if (res.data?.enrollments) {
+            courseStudents = res.data.enrollments;
+          } else if (Array.isArray(res.data)) {
+            courseStudents = res.data;
+          } else if (res.data?.data) {
+            courseStudents = res.data.data;
+          } else {
+            courseStudents = [];
+          }
+
+          return {
+            courseId: enrollment.course_id,
+            students: courseStudents,
+            enrollmentId: enrollment._id,
+            createdAt: enrollment.createdAt
+          };
+        } catch (err) {
+          console.error(`Error fetching students for course ${enrollment.course_id}:`, err);
+          return {
+            courseId: enrollment.course_id,
+            students: [],
+            enrollmentId: enrollment._id,
+            error: err.message
+          };
+        }
+      });
+
+      const results = await Promise.all(coursePromises);
+      setCoursesData(results);
+      
+      // Combine all students from all courses and remove duplicates
+      const allStudentsMap = new Map();
+      results.forEach(course => {
+        course.students.forEach(student => {
+          if (student && student._id && !allStudentsMap.has(student._id)) {
+            allStudentsMap.set(student._id, student);
+          }
+        });
+      });
+      
+      const uniqueStudents = Array.from(allStudentsMap.values());
+      setStudents(uniqueStudents);
+      
+    } catch (error) {
+      console.error("Error fetching students:", error);
+      setStudents([]);
+    } finally {
+      setFetchingStudents(false);
+    }
+  };
+
+  useEffect(() => {
+    if (teacherEnrollments && teacherEnrollments.length > 0) {
+      fetchStudentsFromAllCourses();
+    } else {
+      setStudents([]);
+      setCoursesData([]);
+    }
+  }, [teacherEnrollments]);
 
   const openChat = (student_id) => {
     router.push(`/dashboard/discuss/${student_id}`);
   };
 
-  const students = enrollMent?.students || [];
-
-  if (loading) {
+  if (loading || fetchingStudents) {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center">
         <Loader2 className="h-10 w-10 text-indigo-500 animate-spin mb-4" />
         <p className="text-gray-500 font-medium">
-          Loading enrolled students...
+          {loading ? "Loading enrolled students..." : "Fetching course data..."}
         </p>
       </div>
     );
@@ -40,50 +121,77 @@ const Page = () => {
           </p>
         </div>
 
-        {students.length === 0 ? (
-          <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-16 text-center">
-            <div className="w-20 h-20 bg-indigo-50 rounded-full flex items-center justify-center mx-auto mb-6">
-              <User className="h-10 w-10 text-indigo-400" />
+        {/* Display Course-wise Students */}
+        {coursesData.length > 0 && (
+          <div className="mb-12">
+            <div className="flex items-center gap-2 mb-6">
+              <BookOpen className="h-6 w-6 text-indigo-500" />
+              <h2 className="text-2xl font-bold text-gray-800">Courses & Students</h2>
             </div>
-            <h3 className="text-xl font-semibold text-gray-800 mb-2">
-              No Students Enrolled
-            </h3>
-            <p className="text-gray-500">
-              When students enroll in your courses, they will appear here for
-              direct messaging.
-            </p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {students.map((student, index) => (
-              <div
-                key={student._id}
-                onClick={() => openChat(student._id)}
-                className="group bg-white rounded-2xl p-6 shadow-md border border-gray-100 hover:shadow-xl hover:border-indigo-200 transition-all duration-300 transform hover:-translate-y-1 cursor-pointer flex flex-col justify-between animate-fade-in-up"
-                style={{ animationDelay: `${index * 50}ms` }}
-              >
-                <div className="flex items-start justify-between mb-4">
-                  <div className="w-14 h-14 rounded-full bg-gradient-to-br from-indigo-100 to-blue-50 flex items-center justify-center text-indigo-600 font-bold text-xl shadow-inner border border-white">
-                    {student.name ? student.name.charAt(0).toUpperCase() : "S"}
+            
+            <div className="space-y-8">
+              {coursesData.map((course, idx) => (
+                <div key={course.courseId} className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+                  <div className="bg-gradient-to-r from-indigo-50 to-purple-50 px-6 py-4 border-b border-gray-100">
+                    <h3 className="text-xl font-semibold text-gray-800">
+                      Course {idx + 1}
+                    </h3>
+                    <p className="text-sm text-gray-500 mt-1">
+                      Course ID: {course.courseId}
+                    </p>
+                    <p className="text-xs text-gray-400">
+                      Enrolled Students: {course.students.length}
+                    </p>
                   </div>
-                  <div className="w-10 h-10 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center group-hover:bg-indigo-500 group-hover:border-indigo-500 transition-all text-gray-400 group-hover:text-white group-hover:shadow-md">
-                    <ChevronRight className="h-5 w-5" />
+                  
+                  <div className="p-6">
+                    {course.students.length === 0 ? (
+                      <div className="text-center py-8">
+                        <User className="h-12 w-12 text-gray-300 mx-auto mb-2" />
+                        <p className="text-gray-400">No students enrolled in this course yet</p>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {course.students.map((student) => (
+                          <div
+                            key={student._id}
+                            onClick={() => openChat(student._id)}
+                            className="group bg-gray-50 rounded-xl p-4 hover:bg-indigo-50 transition-all duration-300 cursor-pointer border border-transparent hover:border-indigo-200"
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-400 to-purple-400 flex items-center justify-center text-white font-bold text-sm">
+                                {student.name ? student.name.charAt(0).toUpperCase() : "S"}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="font-semibold text-gray-800 group-hover:text-indigo-600 truncate">
+                                  {student.name || "Unknown Student"}
+                                </p>
+                                {student.email && (
+                                  <p className="text-xs text-gray-500 truncate">
+                                    {student.email}
+                                  </p>
+                                )}
+                                {student.rollNumber && (
+                                  <p className="text-xs text-gray-400">
+                                    Roll: {student.rollNumber}
+                                  </p>
+                                )}
+                              </div>
+                              <ChevronRight className="h-5 w-5 text-gray-400 group-hover:text-indigo-500 group-hover:translate-x-1 transition-all" />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
-                <div>
-                  <h3 className="text-lg font-bold text-gray-800 group-hover:text-indigo-600 transition-colors line-clamp-1">
-                    {student.name || "Unknown Student"}
-                  </h3>
-                  <div className="flex items-center gap-2 mt-2">
-                    <span className="text-xs font-semibold bg-gray-100 text-gray-600 px-2.5 py-1 rounded-full group-hover:bg-indigo-50 group-hover:text-indigo-600 transition-colors">
-                      Roll No: {student.rollNumber || "N/A"}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         )}
+
+   
+
       </div>
 
       <style jsx>{`

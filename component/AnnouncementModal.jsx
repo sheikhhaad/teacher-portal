@@ -2,9 +2,19 @@ import React, { useState } from "react";
 import { Megaphone, X } from "lucide-react";
 import Button from "./Button";
 
-export default function AnnouncementModal({ isOpen, onClose, onSubmit }) {
+export default function AnnouncementModal({ isOpen, onClose, onSubmit, courses = [], defaultCourseId = "" }) {
   const [description, setDescription] = useState("");
+  const [courseId, setCourseId] = useState(defaultCourseId || (courses.length > 0 ? courses[0]._id : ""));
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Update courseId if defaultCourseId changes
+  React.useEffect(() => {
+    if (defaultCourseId) {
+      setCourseId(defaultCourseId);
+    } else if (courses.length > 0 && !courseId) {
+      setCourseId(courses[0]._id);
+    }
+  }, [defaultCourseId, courses]);
 
   if (!isOpen) return null;
 
@@ -14,7 +24,7 @@ export default function AnnouncementModal({ isOpen, onClose, onSubmit }) {
 
     setIsSubmitting(true);
     try {
-      await onSubmit({ description });
+      await onSubmit({ description, course_id: courseId });
       setDescription("");
       onClose();
     } catch (error) {
@@ -52,21 +62,46 @@ export default function AnnouncementModal({ isOpen, onClose, onSubmit }) {
 
         {/* Body */}
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          <div className="space-y-2">
-            <label
-              htmlFor="description"
-              className="text-sm font-bold text-gray-700 uppercase tracking-wider block"
-            >
-              Details
-            </label>
-            <textarea
-              id="description"
-              required
-              className="w-full border-2 border-gray-100 focus:border-indigo-500 focus:ring-0 p-4 rounded-xl min-h-[140px] transition-all text-gray-800"
-              placeholder="Provide all necessary details for your students..."
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-            />
+          <div className="space-y-4">
+            {courses.length > 1 && (
+              <div className="space-y-2">
+                <label
+                  htmlFor="course"
+                  className="text-sm font-bold text-gray-700 uppercase tracking-wider block"
+                >
+                  Target Course
+                </label>
+                <select
+                  id="course"
+                  value={courseId}
+                  onChange={(e) => setCourseId(e.target.value)}
+                  className="w-full border-2 border-gray-100 focus:border-indigo-500 focus:ring-0 p-4 rounded-xl transition-all text-gray-800 bg-white"
+                >
+                  {courses.map((course) => (
+                    <option key={course._id} value={course._id}>
+                      {course.name} ({course.code})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <label
+                htmlFor="description"
+                className="text-sm font-bold text-gray-700 uppercase tracking-wider block"
+              >
+                Details
+              </label>
+              <textarea
+                id="description"
+                required
+                className="w-full border-2 border-gray-100 focus:border-indigo-500 focus:ring-0 p-4 rounded-xl min-h-[140px] transition-all text-gray-800"
+                placeholder="Provide all necessary details for your students..."
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+              />
+            </div>
           </div>
 
           {/* Footer */}

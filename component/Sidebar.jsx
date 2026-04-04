@@ -14,6 +14,7 @@ import {
   MessageCircle,
 } from "lucide-react";
 import { useTeacher } from "@/app/context/AuthContext";
+import { useCourse } from "@/app/context/CourseContext";
 
 const SIDEBAR_LINKS = [
   { name: "Dashboard", href: "/dashboard", icon: Home },
@@ -32,6 +33,7 @@ const SIDEBAR_LINKS = [
 export default function Sidebar({ isOpen, onClose }) {
   const pathname = usePathname();
   const { teacher, logout } = useTeacher();
+  const { courses } = useCourse();
 
   // Simple active check
   const isActive = (href, dynamic) => {
@@ -98,8 +100,8 @@ export default function Sidebar({ isOpen, onClose }) {
 
         {SIDEBAR_LINKS.map((link) => {
           let href = link.href;
-          if (link.dynamic && teacher?.course_id) {
-            href = `/dashboard/course/${teacher.course_id}`;
+          if (link.dynamic && courses?.length > 0) {
+            href = `/dashboard/course/${courses[0]._id}`;
           }
 
           const active = isActive(link.href, link.dynamic);

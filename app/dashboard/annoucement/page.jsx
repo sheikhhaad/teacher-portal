@@ -30,12 +30,19 @@ const Page = () => {
   const [editText, setEditText] = useState("");
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
+  const [selectedCourseId, setSelectedCourseId] = useState("");
   const [isAnnouncementOpen, setIsAnnouncementOpen] = useState(false);
-  let { course } = useCourse();
+  let { courses } = useCourse();
+
+  useEffect(() => {
+    if (courses && courses.length > 0 && !selectedCourseId) {
+      setSelectedCourseId(courses[0]._id);
+    }
+  }, [courses, selectedCourseId]);
 
   // Fetch announcements initially
   const fetchAnnouncements = async () => {
-    if (!teacher?._id || !teacher?.course_id) {
+    if (!teacher?._id || !selectedCourseId) {
       setLoading(false);
       return;
     }
@@ -45,7 +52,7 @@ const Page = () => {
       setError(null);
 
       const res = await api.get(
-        `/api/announcements/${teacher._id}/course/${teacher.course_id}`,
+        `/api/announcements/${teacher._id}/course/${selectedCourseId}`,
       );
       setAnnouncements(Array.isArray(res.data) ? res.data : [res.data]);
     } catch (err) {
@@ -57,16 +64,21 @@ const Page = () => {
 
   useEffect(() => {
     fetchAnnouncements();
-  }, [teacher]);
+  }, [teacher, selectedCourseId]);
 
   useEffect(() => {
     if (!teacher) return;
 
     // New announcement
     socket.on("new_announcement", (announcement) => {
-      if (announcement.course_id === teacher.course_id) {
+      // Check if this course is one of the teacher's courses
+      const isTeacherCourse = courses?.some(c => String(c._id) === String(announcement.course_id));
+      if (isTeacherCourse) {
         toast.success("A new announcement has been posted!");
-        setAnnouncements((prev) => [announcement, ...prev]);
+        // Only add to list if it's for the currently selected course
+        if (String(announcement.course_id) === String(selectedCourseId)) {
+          setAnnouncements((prev) => [announcement, ...prev]);
+        }
       }
     });
 
@@ -87,7 +99,7 @@ const Page = () => {
       socket.off("update_announcement");
       socket.off("delete_announcement");
     };
-  }, [teacher]);
+  }, [teacher, courses, selectedCourseId]);
   // Show temporary success message
   const showSuccess = (message) => {
     setSuccessMessage(message);
@@ -158,7 +170,7 @@ const Page = () => {
     try {
       await api.post(`/api/announcements/create`, {
         teacher_id: teacher._id,
-        course_id: course?._id,
+        course_id: data.course_id || selectedCourseId,
         text: data.description,
       });
       setIsAnnouncementOpen(false);
@@ -211,9 +223,27 @@ const Page = () => {
             Important updates and information for your class
           </p>
 
-          <Button onClick={() => setIsAnnouncementOpen(true)} icon={Megaphone}>
-            Make An Announcement
-          </Button>
+          <div className="flex flex-col items-center gap-4">
+            {courses && courses.length > 0 && (
+              <div className="w-full max-w-xs">
+                <label className="block text-sm font-medium text-slate-700 mb-1">Select Course</label>
+                <select
+                  value={selectedCourseId}
+                  onChange={(e) => setSelectedCourseId(e.target.value)}
+                  className="w-full p-2.5 bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all outline-none"
+                >
+                  {courses.map((course) => (
+                    <option key={course._id} value={course._id}>
+                      {course.name} ({course.code})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+            <Button onClick={() => setIsAnnouncementOpen(true)} icon={Megaphone}>
+              Make An Announcement
+            </Button>
+          </div>
         </div>
 
         {/* Success Message */}
@@ -392,6 +422,8 @@ const Page = () => {
         isOpen={isAnnouncementOpen}
         onClose={() => setIsAnnouncementOpen(false)}
         onSubmit={handleAnnouncementSubmit}
+        courses={courses}
+        defaultCourseId={selectedCourseId}
       />
     </div>
   );

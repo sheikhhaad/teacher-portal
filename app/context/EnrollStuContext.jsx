@@ -8,21 +8,17 @@ import { useTeacher } from "./AuthContext";
 const EnrollMentContext = createContext();
 
 export function EnrollMentProvider({ children }) {
-  const [enrollMent, setEnrollMent] = useState(null);
+  const [enrollments, setEnrollments] = useState([]); // multi-enrollment support
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const pathname = usePathname();
   const router = useRouter();
-  let { teacher } = useTeacher();
+  const { teacher } = useTeacher();
 
   useEffect(() => {
-    const fetchEnrollMent = async () => {
-      if (!teacher?.course_id) {
-        setLoading(false);
-        return;
-      }
-
-      if (pathname.startsWith("/auth")) {
+    const fetchEnrollments = async () => {
+      // Skip if teacher not available or on /auth routes
+      if (!teacher?._id || pathname.startsWith("/auth")) {
         setLoading(false);
         return;
       }
@@ -30,28 +26,37 @@ export function EnrollMentProvider({ children }) {
       try {
         setLoading(true);
 
-        const res = await api.get(
-          `/api/enrollments/course/${teacher.course_id}`,
+        const res = await api.get(`/api/enrollments/teacher/all/${teacher._id}`);
+      
+        const allEnrollments = res.data?.teacherEnrollments || [];
+        console.log(allEnrollments);
+        
+        
+        // Filter enrollments for this teacher
+        const teacherEnrollments = allEnrollments.filter(
+          (enroll) => String(enroll.teacher_id) === String(teacher?._id)
         );
 
-        setEnrollMent(res.data);
+        setEnrollments(teacherEnrollments);
         setError(null);
       } catch (err) {
         console.error("Fetch enrollment failed:", err);
-        setEnrollMent(null);
+        setEnrollments([]);
         setError(err);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchEnrollMent();
-  }, [pathname, teacher?.course_id]); // ✅ correct deps
+    fetchEnrollments();
+  }, [pathname, teacher?._id]);
+console.log(enrollments);
+
   return (
     <EnrollMentContext.Provider
       value={{
-        enrollMent,
-        setEnrollMent,
+        teacherEnrollments:enrollments,
+        setEnrollments,
         loading,
         error,
       }}
@@ -60,12 +65,13 @@ export function EnrollMentProvider({ children }) {
     </EnrollMentContext.Provider>
   );
 }
-
 export function useEnrollMent() {
   const context = useContext(EnrollMentContext);
 
   if (!context) {
-    throw new Error("useEnrollMent must be used within EnrollMentProvider");
+    throw new Error(
+      "useEnrollMent must be used within EnrollMentProvider"
+    );
   }
 
   return context;

@@ -102,8 +102,17 @@ export function ChatProvider({ children }) {
     activeChatIdRef.current = null; // ✅ clear active chat on unmount
   };
 
-  // ✅ Socket listener — uses ref to check active chat, not stale state
+  // ✅ Socket connection management
   useEffect(() => {
+    if (teacher?._id) {
+      if (!socket.connected) {
+        socket.connect();
+      }
+      
+      // Notify server about the user (optional but recommended)
+      socket.emit("join_user", teacher._id);
+    }
+
     const handleReceiveMessage = (newMessage) => {
       // Ignore messages not belonging to the currently open chat
       if (
@@ -113,28 +122,24 @@ export function ChatProvider({ children }) {
         return;
       }
 
-      // Notify user of an incoming message
+      // Notify user of an incoming message from students
       if (newMessage.sender_role !== "teacher") {
-        toast.success("New message received!");
+        toast.success(`New message from ${newMessage.student_name || "a student"}`);
       }
 
       setMessages((prev) => {
-        // Deduplicate — ignore if already in list (could be our own
-        // optimistic message that was already replaced)
+        // Deduplicate
         if (prev.find((m) => m._id === newMessage._id)) return prev;
-
         return [...prev, newMessage];
       });
     };
 
-    // ✅ Fixed event name: backend emits "receive_message",
-    // was previously "new_message" — mismatch caused zero real-time delivery
     socket.on("receive_message", handleReceiveMessage);
 
     return () => {
       socket.off("receive_message", handleReceiveMessage);
     };
-  }, []); // ✅ empty deps — ref keeps this handler current without re-registering
+  }, [teacher?._id]); // Re-register if teacher changes
 
   return (
     <ChatContext.Provider
