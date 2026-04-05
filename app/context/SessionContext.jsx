@@ -9,8 +9,7 @@ import {
 } from "react";
 import api from "@/utils/api";
 import { useTeacher } from "./AuthContext";
-import socket from "@/utils/socket";
-import toast from "react-hot-toast";
+import { socket } from "@/utils/socket"; // ✅ import socket
 
 const SessionContext = createContext();
 
@@ -29,48 +28,39 @@ export function SessionProvider({ children }) {
     };
   }, []);
 
+  // Fetch all meetings (sessions) for this teacher
   const fetchMeetings = useCallback(async () => {
     if (!teacher?._id) return;
     try {
       setLoading(true);
       setError(null);
       const res = await api.get(`/api/session/teacher/${teacher._id}`);
-      if (isMounted.current) {
-        setMeetings(res.data || []);
-      }
+      if (isMounted.current) setMeetings(res.data || []);
     } catch (err) {
       console.error("Error fetching meetings:", err);
-      if (isMounted.current) {
-        setError("Failed to load meetings.");
-      }
+      if (isMounted.current) setError("Failed to load meetings.");
     } finally {
-      if (isMounted.current) {
-        setLoading(false);
-      }
+      if (isMounted.current) setLoading(false);
     }
   }, [teacher?._id]);
 
+  // Fetch availability slots for this teacher
   const fetchSlots = useCallback(async () => {
     if (!teacher?._id) return;
     try {
       setLoading(true);
       setError(null);
       const res = await api.get(`/api/availability/${teacher._id}`);
-      if (isMounted.current) {
-        setSlots(res.data || []);
-      }
+      if (isMounted.current) setSlots(res.data || []);
     } catch (err) {
       console.error("Error fetching slots:", err);
-      if (isMounted.current) {
-        setError("Failed to load availability slots.");
-      }
+      if (isMounted.current) setError("Failed to load availability slots.");
     } finally {
-      if (isMounted.current) {
-        setLoading(false);
-      }
+      if (isMounted.current) setLoading(false);
     }
   }, [teacher?._id]);
 
+  // Add a new availability slot
   const addSlot = async (slotData) => {
     try {
       const res = await api.post(`/api/availability/create`, slotData);
@@ -85,19 +75,16 @@ export function SessionProvider({ children }) {
     }
   };
 
+  // Delete a slot (and its associated sessions)
   const deleteSlot = async (id) => {
     try {
       // Optimistic delete
       const deletedSlot = slots.find((s) => s._id === id);
       setSlots((prev) => prev.filter((s) => s._id !== id));
-
-      // Also remove any meetings associated with this slot
-      if (deletedSlot && deletedSlot.is_booked) {
+      if (deletedSlot?.is_booked) {
         setMeetings((prev) => prev.filter((m) => m.slot_id !== id));
       }
-
       await api.delete(`/api/availability/${id}`);
-      // Socket will handle confirming the delete
     } catch (err) {
       console.error("Error deleting slot:", err);
       // Revert on error
@@ -107,23 +94,20 @@ export function SessionProvider({ children }) {
     }
   };
 
+  // Update meeting status (accept/reject/cancel)
   const updateMeetingStatus = async (id, status) => {
     try {
       // Optimistic update
       setMeetings((prev) =>
         prev.map((m) =>
-          m._id === id ? { ...m, status, updatedAt: new Date() } : m,
-        ),
+          m._id === id ? { ...m, status, updatedAt: new Date() } : m
+        )
       );
-
       const res = await api.put(`/api/session/${id}`, { status });
-
-      // Update with actual server response
       setMeetings((prev) => prev.map((m) => (m._id === id ? res.data : m)));
       return res.data;
     } catch (err) {
       console.error("Error updating status:", err);
-      // Revert on error
       await fetchMeetings();
       throw err;
     }
@@ -137,85 +121,56 @@ export function SessionProvider({ children }) {
     }
   }, [fetchMeetings, fetchSlots, teacher?._id]);
 
-  // Socket event listeners
+  // ✅ Real‑time socket listeners (matches backend events)
   useEffect(() => {
     if (!teacher?._id) return;
+    if (!socket.connected) socket.connect();
 
-    // Handle new session request from student
-    const handleNewSessionRequest = (data) => {
-      const { session, teacher_id, student_id } = data;
-      if (teacher_id === teacher._id) {
+    // New session request (student booked a slot)
+    const handleSessionBooked = (session) => {
+      if (session.teacher_id === teacher._id) {
         setMeetings((prev) => {
           if (prev.find((m) => m._id === session._id)) return prev;
           return [session, ...prev];
         });
-      }
-    };
-
-    // Handle meeting status update
-    const handleUpdateSessionStatus = (data) => {
-      const { session, teacher_id, student_id } = data;
-      if (teacher_id === teacher._id) {
-        setMeetings((prev) =>
-          prev.map((m) => (m._id === session._id ? session : m)),
-        );
-      }
-    };
-
-    // Handle slot update (when booked)
-    const handleSlotUpdate = (updatedSlot) => {
-      if (updatedSlot.teacher_id === teacher._id) {
+        // Also update the corresponding slot to booked
         setSlots((prev) =>
-          prev.map((s) => (s._id === updatedSlot._id ? updatedSlot : s)),
+          prev.map((s) =>
+            s._id === session.slot_id ? { ...s, is_booked: true } : s
+          )
         );
       }
     };
 
-    // Handle slot deletion with sessions
-    const handleSlotDeletedWithSessions = (data) => {
-      const { slotId, teacherId, sessionIds } = data;
-      if (teacherId === teacher._id) {
-        // Remove the slot
-        setSlots((prev) => prev.filter((s) => s._id !== slotId));
-        // Remove associated sessions
-        setMeetings((prev) => prev.filter((m) => !sessionIds.includes(m._id)));
+    // Session status updated (accepted/rejected/cancelled)
+    const handleSessionUpdated = (session) => {
+      if (session.teacher_id === teacher._id) {
+        setMeetings((prev) =>
+          prev.map((m) => (m._id === session._id ? session : m))
+        );
       }
     };
 
-    // Handle new slot
-    const handleNewSlot = (data) => {
-      const { slot, teacherId } = data;
-      if (teacherId === teacher._id) {
-        setSlots((prev) => {
-          if (prev.find((s) => s._id === slot._id)) return prev;
-          return [...prev, slot];
-        });
-      }
+    // Session deleted (when a slot is deleted)
+    const handleSessionDeleted = ({ id }) => {
+      setMeetings((prev) => prev.filter((m) => m._id !== id));
     };
 
-    // Handle slot deletion
-    const handleDeleteSlot = (data) => {
-      const { id, teacherId } = data;
-      if (teacherId === teacher._id) {
-        setSlots((prev) => prev.filter((s) => s._id !== id));
-      }
+    // Slot deleted (emitted by backend)
+    const handleSlotDeleted = ({ slotId }) => {
+      setSlots((prev) => prev.filter((s) => s._id !== slotId));
     };
 
-    // Register all socket events
-    socket.on("new_session_request", handleNewSessionRequest);
-    socket.on("update_session_status", handleUpdateSessionStatus);
-    socket.on("slot_update", handleSlotUpdate);
-    socket.on("slot_deleted_with_sessions", handleSlotDeletedWithSessions);
-    socket.on("new_slot", handleNewSlot);
-    socket.on("delete_slot", handleDeleteSlot);
+    socket.on("session_booked", handleSessionBooked);
+    socket.on("session_updated", handleSessionUpdated);
+    socket.on("session_deleted", handleSessionDeleted);
+    socket.on("slot_deleted", handleSlotDeleted);
 
     return () => {
-      socket.off("new_session_request", handleNewSessionRequest);
-      socket.off("update_session_status", handleUpdateSessionStatus);
-      socket.off("slot_update", handleSlotUpdate);
-      socket.off("slot_deleted_with_sessions", handleSlotDeletedWithSessions);
-      socket.off("new_slot", handleNewSlot);
-      socket.off("delete_slot", handleDeleteSlot);
+      socket.off("session_booked", handleSessionBooked);
+      socket.off("session_updated", handleSessionUpdated);
+      socket.off("session_deleted", handleSessionDeleted);
+      socket.off("slot_deleted", handleSlotDeleted);
     };
   }, [teacher?._id]);
 

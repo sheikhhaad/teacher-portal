@@ -34,7 +34,7 @@ const Page = () => {
   const [answer, setAnswer] = useState("");
   const [isUpdating, setIsUpdating] = useState(false);
 
-  // ✅ Derive course-specific queries from context — updates automatically on socket events
+  
   const courseQueries = useMemo(
     () => queries.filter((q) => q.course_id === id),
     [queries, id],
@@ -73,8 +73,7 @@ const Page = () => {
         answer,
         status: "resolved",
       });
-      // ✅ No re-fetch needed — socket "update_query" updates context,
-      //    which triggers courseQueries to recompute via useMemo
+    
       closeModal();
     } catch (err) {
       console.error(err);

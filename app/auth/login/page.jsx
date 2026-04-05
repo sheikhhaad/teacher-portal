@@ -22,7 +22,7 @@ const page = () => {
       let res = await api.post(
         "api/auth/teacher/login",
         {
-          email,
+          email: email.toLowerCase(),
           password,
         },
       );

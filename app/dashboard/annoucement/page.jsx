@@ -15,11 +15,9 @@ import {
   LogIn,
   Loader2,
 } from "lucide-react";
-import socket from "@/utils/socket";
 import AnnouncementModal from "@/component/AnnouncementModal";
 import Button from "@/component/Button";
 import { useCourse } from "@/app/context/CourseContext";
-import toast from "react-hot-toast";
 
 const Page = () => {
   const { teacher } = useTeacher();
@@ -34,13 +32,14 @@ const Page = () => {
   const [isAnnouncementOpen, setIsAnnouncementOpen] = useState(false);
   let { courses } = useCourse();
 
+  // Set default selected course
   useEffect(() => {
     if (courses && courses.length > 0 && !selectedCourseId) {
       setSelectedCourseId(courses[0]._id);
     }
   }, [courses, selectedCourseId]);
 
-  // Fetch announcements initially
+  // Fetch announcements for selected course
   const fetchAnnouncements = async () => {
     if (!teacher?._id || !selectedCourseId) {
       setLoading(false);
@@ -50,7 +49,6 @@ const Page = () => {
     try {
       setLoading(true);
       setError(null);
-
       const res = await api.get(
         `/api/announcements/${teacher._id}/course/${selectedCourseId}`,
       );
@@ -62,48 +60,10 @@ const Page = () => {
     }
   };
 
+  // Initial load when teacher or selected course changes
   useEffect(() => {
     fetchAnnouncements();
   }, [teacher, selectedCourseId]);
-
-  useEffect(() => {
-    if (!teacher) return;
-
-    // New announcement — named handler for proper cleanup
-    const handleNewAnnouncement = (announcement) => {
-      const isTeacherCourse = courses?.some(c => String(c._id) === String(announcement.course_id));
-      if (isTeacherCourse) {
-        if (String(announcement.course_id) === String(selectedCourseId)) {
-          setAnnouncements((prev) => {
-            if (prev.find((a) => a._id === announcement._id)) return prev;
-            return [announcement, ...prev];
-          });
-        }
-      }
-    };
-
-    // Updated announcement
-    const handleUpdateAnnouncement = (updated) => {
-      setAnnouncements((prev) =>
-        prev.map((a) => (a._id === updated._id ? updated : a)),
-      );
-    };
-
-    // Deleted announcement
-    const handleDeleteAnnouncement = ({ id }) => {
-      setAnnouncements((prev) => prev.filter((a) => a._id !== id));
-    };
-
-    socket.on("new_announcement", handleNewAnnouncement);
-    socket.on("update_announcement", handleUpdateAnnouncement);
-    socket.on("delete_announcement", handleDeleteAnnouncement);
-
-    return () => {
-      socket.off("new_announcement", handleNewAnnouncement);
-      socket.off("update_announcement", handleUpdateAnnouncement);
-      socket.off("delete_announcement", handleDeleteAnnouncement);
-    };
-  }, [teacher, courses, selectedCourseId]);
 
   // Show temporary success message
   const showSuccess = (message) => {
@@ -114,20 +74,17 @@ const Page = () => {
   // Delete announcement
   const handleDelete = async (announcementId) => {
     try {
-      const response = await api.delete(
+      await api.delete(
         `/api/announcements/deleteannouncement/${announcementId}`,
       );
-      if (response.status === 200) {
-        setDeleteConfirm(null);
-        showSuccess("Announcement deleted successfully");
-        // backend emits automatically → students updated
-      }
+      // Remove from local state
+      setAnnouncements((prev) => prev.filter((a) => a._id !== announcementId));
+      setDeleteConfirm(null);
+      showSuccess("Announcement deleted successfully");
     } catch (err) {
       setError(err.response?.data?.message || "Failed to delete announcement");
       setTimeout(() => setError(null), 5000);
     }
-
-    fetchAnnouncements();
   };
 
   // Update announcement
@@ -141,49 +98,51 @@ const Page = () => {
     try {
       const response = await api.put(
         `/api/announcements/updateannouncement/${announcementId}`,
-        { text: editText },
+        {
+          text: editText,
+        },
       );
-      if (response.status === 200) {
-        setEditingAnnouncement(null);
-        setEditText("");
-        showSuccess("Announcement updated successfully");
-        // backend emits automatically → students updated
-      }
+      // Update local state with the updated announcement from response
+      const updatedAnn = response.data;
+      setAnnouncements((prev) =>
+        prev.map((a) => (a._id === updatedAnn._id ? updatedAnn : a)),
+      );
+      setEditingAnnouncement(null);
+      setEditText("");
+      showSuccess("Announcement updated successfully");
     } catch (err) {
       setError(err.response?.data?.message || "Failed to update announcement");
       setTimeout(() => setError(null), 5000);
     }
-
-    fetchAnnouncements();
   };
 
-  // Start editing
   const startEditing = (announcement) => {
     setEditingAnnouncement(announcement._id);
     setEditText(announcement.text);
-    fetchAnnouncements();
   };
 
-  // Cancel editing
   const cancelEditing = () => {
     setEditingAnnouncement(null);
     setEditText("");
-    fetchAnnouncements();
   };
 
   const handleAnnouncementSubmit = async (data) => {
     try {
-      await api.post(`/api/announcements/create`, {
+      const response = await api.post(`/api/announcements/create`, {
         teacher_id: teacher._id,
         course_id: data.course_id || selectedCourseId,
         text: data.description,
       });
+      const newAnnouncement = response.data;
+      // Add to local state (at the beginning)
+      setAnnouncements((prev) => [newAnnouncement, ...prev]);
       setIsAnnouncementOpen(false);
+      showSuccess("Announcement created successfully");
     } catch (err) {
       console.error(err);
+      setError("Failed to create announcement");
+      setTimeout(() => setError(null), 5000);
     }
-
-    fetchAnnouncements();
   };
 
   if (!teacher) {
@@ -228,10 +187,12 @@ const Page = () => {
             Important updates and information for your class
           </p>
 
-          <div className="flex flex-col items-center gap-4">
+          <div className="flex flex-col items-center gap-4 mt-4">
             {courses && courses.length > 0 && (
               <div className="w-full max-w-xs">
-                <label className="block text-sm font-medium text-slate-700 mb-1">Select Course</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Select Course
+                </label>
                 <select
                   value={selectedCourseId}
                   onChange={(e) => setSelectedCourseId(e.target.value)}
@@ -245,7 +206,10 @@ const Page = () => {
                 </select>
               </div>
             )}
-            <Button onClick={() => setIsAnnouncementOpen(true)} icon={Megaphone}>
+            <Button
+              onClick={() => setIsAnnouncementOpen(true)}
+              icon={Megaphone}
+            >
               Make An Announcement
             </Button>
           </div>
@@ -289,7 +253,7 @@ const Page = () => {
               No Announcements Yet
             </h3>
             <p className="text-slate-500">
-              Check back later for updates from your instructor.
+              Create your first announcement using the button above.
             </p>
           </div>
         ) : (

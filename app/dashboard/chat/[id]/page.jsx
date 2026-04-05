@@ -6,13 +6,12 @@ import api from "@/utils/api";
 import { useQueries } from "@/app/context/QueryContext";
 import { useTeacher } from "@/app/context/AuthContext";
 import Button from "@/component/Button";
-import socket from "@/utils/socket";
 
 const TeacherQueryDetail = () => {
   const { id } = useParams();
   const router = useRouter();
   const { queries, loading } = useQueries();
-  const { teacher } = useTeacher();
+  const { teacher, loading: authLoading } = useTeacher();
 
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState([]);
@@ -69,7 +68,6 @@ const TeacherQueryDetail = () => {
     }
   }, [query?._id]);
 
-  // Listen for socket messages for this query
   useEffect(() => {
     if (!query?._id) return;
 
@@ -92,12 +90,10 @@ const TeacherQueryDetail = () => {
       }
     };
 
-    socket.on("receive_query_message", handleReceiveMessage);
-    socket.on("receive_message", handleReceiveMessage);
+   
 
     return () => {
-      socket.off("receive_query_message", handleReceiveMessage);
-      socket.off("receive_message", handleReceiveMessage);
+      
     };
   }, [query?._id, teacher]);
 
@@ -143,7 +139,7 @@ const TeacherQueryDetail = () => {
     }
   };
 
-  if (loading && queries.length === 0) {
+  if ((authLoading || loading) && queries.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh]">
         <div className="relative">
@@ -157,7 +153,7 @@ const TeacherQueryDetail = () => {
     );
   }
 
-  if (!query) {
+  if (!query && !authLoading && !loading) {
     return (
       <div className="max-w-8xl mx-auto py-12 px-4">
         <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-12 text-center">

@@ -1,4 +1,4 @@
-// context/QueryContext.jsx
+// context/QueryContext.jsx (Teacher Portal)
 "use client";
 
 import {
@@ -10,19 +10,22 @@ import {
 } from "react";
 import api from "@/utils/api";
 import { useTeacher } from "./AuthContext";
-import socket from "@/utils/socket";
-import toast from "react-hot-toast";
+import { socket } from "@/utils/socket";
 
 const QueryContext = createContext();
 
 export function QueryProvider({ children }) {
   const { teacher } = useTeacher();
   const [queries, setQueries] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Fetch all queries (for teacher dashboard)
   const fetchAllQueries = useCallback(async () => {
-    if (!teacher?._id) return;
+    if (!teacher?._id) {
+      setLoading(false);
+      return;
+    }
     try {
       setLoading(true);
       setError(null);
@@ -40,7 +43,7 @@ export function QueryProvider({ children }) {
     }
   }, [teacher?._id]);
 
-  // ✅ Now populates context queries so socket diffs work
+  // Fetch queries for a specific course (teacher view)
   const fetchCourseQueries = useCallback(
     async (courseId, teacherId) => {
       if (!teacherId || !courseId) return [];
@@ -51,7 +54,7 @@ export function QueryProvider({ children }) {
         const data = Array.isArray(res.data)
           ? res.data
           : res.data.queries || [];
-        setQueries(data); // ✅ populate context so socket updates can diff correctly
+        setQueries(data);
         return data;
       } catch (err) {
         console.error("Fetch course queries failed:", err);
@@ -59,9 +62,10 @@ export function QueryProvider({ children }) {
         return [];
       }
     },
-    [teacher?._id],
+    [], // ✅ no dependency on teacher?._id because teacherId is passed
   );
 
+  // Optimistic UI updates (used after API calls)
   const addQuery = (newQuery) => {
     setQueries((prev) => {
       if (prev.find((q) => q._id === newQuery._id)) return prev;
@@ -75,20 +79,24 @@ export function QueryProvider({ children }) {
     );
   };
 
+  // Initial load
   useEffect(() => {
     if (teacher?._id) {
       fetchAllQueries();
     } else {
       setQueries([]);
+      setLoading(false);
     }
   }, [teacher?._id, fetchAllQueries]);
 
-  // ✅ Socket listeners — removed broken teacher.course_id filter
+  // ✅ Socket listeners for real‑time updates (create, update, delete)
   useEffect(() => {
     if (!teacher?._id) return;
+    if (!socket.connected) socket.connect();
 
     const handleNewQuery = (query) => {
-      // Assuming teacher query logic - only handle state here
+      // Only add if it belongs to a course taught by this teacher (optional filter)
+      // For now, add all – backend may already restrict.
       setQueries((prev) => {
         if (prev.find((q) => q._id === query._id)) return prev;
         return [query, ...prev];
@@ -96,19 +104,13 @@ export function QueryProvider({ children }) {
     };
 
     const handleUpdateQuery = (updatedQuery) => {
-      setQueries((prev) => {
-        const index = prev.findIndex((q) => q._id === updatedQuery._id);
-        if (index > -1) {
-          const newQueries = [...prev];
-          newQueries[index] = updatedQuery;
-          return newQueries;
-        }
-        return prev;
-      });
+      setQueries((prev) =>
+        prev.map((q) => (q._id === updatedQuery._id ? updatedQuery : q)),
+      );
     };
 
-    const handleDeleteQuery = ({ _id }) => {
-      setQueries((prev) => prev.filter((q) => q._id !== _id));
+    const handleDeleteQuery = ({ id }) => {
+      setQueries((prev) => prev.filter((q) => q._id !== id));
     };
 
     socket.on("new_query", handleNewQuery);

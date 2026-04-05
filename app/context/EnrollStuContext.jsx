@@ -13,10 +13,13 @@ export function EnrollMentProvider({ children }) {
   const [error, setError] = useState(null);
   const pathname = usePathname();
   const router = useRouter();
-  const { teacher } = useTeacher();
+  const { teacher, loading: authLoading } = useTeacher();
 
   useEffect(() => {
     const fetchEnrollments = async () => {
+      // If auth is still loading, wait
+      if (authLoading) return;
+
       // Skip if teacher not available or on /auth routes
       if (!teacher?._id || pathname.startsWith("/auth")) {
         setLoading(false);
