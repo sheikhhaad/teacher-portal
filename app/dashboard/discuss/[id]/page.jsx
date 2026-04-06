@@ -165,7 +165,7 @@ const TeacherChatPage = () => {
                   <div
                     className={`max-w-[80%] px-4 py-2.5 rounded-2xl ${
                       isTeacher
-                        ? "bg-slate-800  rounded-br-md"
+                        ? "bg-slate-800  text-white rounded-br-md"
                         : "bg-white border border-slate-100 text-slate-700 rounded-bl-md shadow-sm"
                     }`}
                   >
