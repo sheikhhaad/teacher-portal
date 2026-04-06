@@ -159,11 +159,11 @@ export default function AnnouncementsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 px-4 sm:px-6 lg:px-8 py-8">
+    <div className="min-h-screen px-4 sm:px-6 lg:px-8 py-8">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-12 h-12 bg-slate-800 rounded-xl mb-3 shadow-sm">
+          <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl mb-3 shadow-sm">
             <Megaphone className="h-5 w-5 " />
           </div>
           <h1 className="text-2xl font-bold text-slate-800">Announcements</h1>

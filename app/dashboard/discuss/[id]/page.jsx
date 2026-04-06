@@ -214,7 +214,7 @@ const TeacherChatPage = () => {
           <button
             type="submit"
             disabled={!message.trim() || sendingMessage}
-            className="w-10 h-10 rounded-xl bg-slate-800 hover:bg-slate-700  flex items-center justify-center transition disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+            className="w-10 h-10 rounded-xl  hover:bg-slate-700  flex items-center justify-center transition disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
             aria-label="Send message"
           >
             {sendingMessage ? (
