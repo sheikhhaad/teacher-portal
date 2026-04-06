@@ -1,4 +1,3 @@
-// app/courses/[id]/page.jsx
 "use client";
 
 import { useTeacher } from "@/app/context/AuthContext";
@@ -13,7 +12,6 @@ import {
   AlertCircle,
   Send,
   ArrowLeft,
-  Megaphone,
 } from "lucide-react";
 import StatsCard from "@/component/StatsCard";
 import Button from "@/component/Button";
@@ -26,7 +24,8 @@ const Page = () => {
   const { id } = useParams();
   const { teacher } = useTeacher();
   const router = useRouter();
-  const { queries, loading, error, fetchCourseQueries } = useQueries();
+  const { queries, loading, error, fetchCourseQueries, updateQueryInList } =
+    useQueries();
 
   const [isInitializing, setIsInitializing] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
@@ -34,24 +33,22 @@ const Page = () => {
   const [answer, setAnswer] = useState("");
   const [isUpdating, setIsUpdating] = useState(false);
 
-  
   const courseQueries = useMemo(
     () => queries.filter((q) => q.course_id === id),
     [queries, id],
   );
 
-  // Initial fetch to populate context with this course's queries
+  // Initial fetch
   useEffect(() => {
     const initQueries = async () => {
       setIsInitializing(true);
       await fetchCourseQueries(id, teacher?._id);
       setIsInitializing(false);
     };
-
     if (id && teacher?._id) {
       initQueries();
     }
-  }, [id, teacher?._id]);
+  }, [id, teacher?._id, fetchCourseQueries]);
 
   const openModal = (query) => {
     setSelectedQuery(query);
@@ -69,14 +66,24 @@ const Page = () => {
     if (!answer.trim()) return;
     setIsUpdating(true);
     try {
-      await api.put(`/api/queries/${selectedQuery._id}`, {
-        answer,
-        status: "resolved",
-      });
-    
+      const { data: updatedQuery } = await api.put(
+        `/api/queries/${selectedQuery._id}`,
+        {
+          answer,
+          status: "resolved",
+        },
+      );
+
+      // 1. Optimistic update – reflect changes immediately
+      updateQueryInList(updatedQuery);
+
+      // 2. Fallback: refresh the whole course list silently (in case socket fails)
+      await fetchCourseQueries(id, teacher?._id);
+
       closeModal();
     } catch (err) {
-      console.error(err);
+      console.error("Failed to update query:", err);
+      // Optionally show a toast error here
     } finally {
       setIsUpdating(false);
     }
@@ -228,7 +235,6 @@ const Page = () => {
               className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm"
               onClick={closeModal}
             />
-
             <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg relative z-10 overflow-hidden animate-in fade-in zoom-in duration-300">
               <div className="p-6 border-b border-gray-100 bg-indigo-50/50">
                 <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">

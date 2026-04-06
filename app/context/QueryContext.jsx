@@ -1,4 +1,3 @@
-// context/QueryContext.jsx (Teacher Portal)
 "use client";
 
 import {
@@ -20,106 +19,82 @@ export function QueryProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Fetch all queries (for teacher dashboard)
-  const fetchAllQueries = useCallback(async () => {
-    if (!teacher?._id) {
-      setLoading(false);
-      return;
-    }
+  // Fetch queries for a specific course
+  const fetchCourseQueries = useCallback(async (courseId, teacherId) => {
+    if (!teacherId || !courseId) return [];
     try {
       setLoading(true);
       setError(null);
-      const res = await api.get(`/api/queries/all`);
-      const fetchedQueries = Array.isArray(res.data)
-        ? res.data
-        : res.data.queries || [];
-      setQueries(fetchedQueries);
+      const res = await api.get(
+        `/api/queries/teacher/${teacherId}/course/${courseId}`
+      );
+      const data = Array.isArray(res.data) ? res.data : res.data.queries || [];
+      setQueries(data);
+      return data;
     } catch (err) {
-      console.error("Fetch all queries failed:", err);
-      setError("Failed to load queries.");
-      setQueries([]);
+      console.error("Fetch course queries failed:", err);
+      setError("Failed to load course queries.");
+      return [];
     } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Optimistic UI update after API reply
+  const updateQueryInList = useCallback((updatedQuery) => {
+    setQueries((prev) =>
+      prev.map((q) => (q._id === updatedQuery._id ? updatedQuery : q))
+    );
+  }, []);
+
+  // Reset when teacher logs out
+  useEffect(() => {
+    if (!teacher?._id) {
+      setQueries([]);
       setLoading(false);
     }
   }, [teacher?._id]);
 
-  // Fetch queries for a specific course (teacher view)
-  const fetchCourseQueries = useCallback(
-    async (courseId, teacherId) => {
-      if (!teacherId || !courseId) return [];
-      try {
-        const res = await api.get(
-          `/api/queries/teacher/${teacherId}/course/${courseId}`,
-        );
-        const data = Array.isArray(res.data)
-          ? res.data
-          : res.data.queries || [];
-        setQueries(data);
-        return data;
-      } catch (err) {
-        console.error("Fetch course queries failed:", err);
-        setError("Failed to load course queries.");
-        return [];
-      }
-    },
-    [], // ✅ no dependency on teacher?._id because teacherId is passed
-  );
-
-  // Optimistic UI updates (used after API calls)
-  const addQuery = (newQuery) => {
-    setQueries((prev) => {
-      if (prev.find((q) => q._id === newQuery._id)) return prev;
-      return [newQuery, ...prev];
-    });
-  };
-
-  const updateQueryInList = (updatedQuery) => {
-    setQueries((prev) =>
-      prev.map((q) => (q._id === updatedQuery._id ? updatedQuery : q)),
-    );
-  };
-
-  // Initial load
-  useEffect(() => {
-    if (teacher?._id) {
-      fetchAllQueries();
-    } else {
-      setQueries([]);
-      setLoading(false);
-    }
-  }, [teacher?._id, fetchAllQueries]);
-
-  // ✅ Socket listeners for real‑time updates (create, update, delete)
+  // Socket listeners – only new_query and delete_query
   useEffect(() => {
     if (!teacher?._id) return;
-    if (!socket.connected) socket.connect();
 
-    const handleNewQuery = (query) => {
-      // Only add if it belongs to a course taught by this teacher (optional filter)
-      // For now, add all – backend may already restrict.
+    const handleConnect = () => {
+      console.log("✅ Teacher socket connected");
+    };
+
+    const handleDisconnect = (reason) => {
+      console.warn("⚠️ Teacher socket disconnected:", reason);
+    };
+
+    const handleNewQuery = (newQuery) => {
+      console.log("📩 New query received via socket:", newQuery);
       setQueries((prev) => {
-        if (prev.find((q) => q._id === query._id)) return prev;
-        return [query, ...prev];
+        if (prev.find((q) => q._id === newQuery._id)) return prev;
+        return [newQuery, ...prev]; // newest first
       });
     };
 
-    const handleUpdateQuery = (updatedQuery) => {
-      setQueries((prev) =>
-        prev.map((q) => (q._id === updatedQuery._id ? updatedQuery : q)),
-      );
-    };
-
     const handleDeleteQuery = ({ id }) => {
+      console.log("🗑️ Query deleted via socket:", id);
       setQueries((prev) => prev.filter((q) => q._id !== id));
     };
 
+    socket.on("connect", handleConnect);
+    socket.on("disconnect", handleDisconnect);
     socket.on("new_query", handleNewQuery);
-    socket.on("update_query", handleUpdateQuery);
     socket.on("delete_query", handleDeleteQuery);
 
+    if (!socket.connected) {
+      socket.connect();
+    } else {
+      handleConnect();
+    }
+
     return () => {
+      socket.off("connect", handleConnect);
+      socket.off("disconnect", handleDisconnect);
       socket.off("new_query", handleNewQuery);
-      socket.off("update_query", handleUpdateQuery);
       socket.off("delete_query", handleDeleteQuery);
     };
   }, [teacher?._id]);
@@ -130,9 +105,7 @@ export function QueryProvider({ children }) {
         queries,
         loading,
         error,
-        fetchAllQueries,
         fetchCourseQueries,
-        addQuery,
         updateQueryInList,
       }}
     >

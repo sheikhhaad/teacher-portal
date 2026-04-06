@@ -1,7 +1,8 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import api from "@/utils/api";
 import { useTeacher } from "@/app/context/AuthContext";
+import { useCourse } from "@/app/context/CourseContext";
 import {
   Pencil,
   Trash2,
@@ -14,38 +15,35 @@ import {
   Megaphone,
   LogIn,
   Loader2,
+  BookOpen,
 } from "lucide-react";
 import AnnouncementModal from "@/component/AnnouncementModal";
-import Button from "@/component/Button";
-import { useCourse } from "@/app/context/CourseContext";
 
-const Page = () => {
+export default function AnnouncementsPage() {
   const { teacher } = useTeacher();
+  const { courses } = useCourse();
   const [announcements, setAnnouncements] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [editingAnnouncement, setEditingAnnouncement] = useState(null);
+  const [editingId, setEditingId] = useState(null);
   const [editText, setEditText] = useState("");
-  const [deleteConfirm, setDeleteConfirm] = useState(null);
-  const [successMessage, setSuccessMessage] = useState(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState(null);
+  const [successMsg, setSuccessMsg] = useState(null);
   const [selectedCourseId, setSelectedCourseId] = useState("");
-  const [isAnnouncementOpen, setIsAnnouncementOpen] = useState(false);
-  let { courses } = useCourse();
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Set default selected course
+  // Set default course when courses load
   useEffect(() => {
-    if (courses && courses.length > 0 && !selectedCourseId) {
+    if (courses?.length && !selectedCourseId) {
       setSelectedCourseId(courses[0]._id);
     }
   }, [courses, selectedCourseId]);
 
-  // Fetch announcements for selected course
-  const fetchAnnouncements = async () => {
+  const fetchAnnouncements = useCallback(async () => {
     if (!teacher?._id || !selectedCourseId) {
       setLoading(false);
       return;
     }
-
     try {
       setLoading(true);
       setError(null);
@@ -58,104 +56,92 @@ const Page = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [teacher?._id, selectedCourseId]);
 
-  // Initial load when teacher or selected course changes
   useEffect(() => {
     fetchAnnouncements();
-  }, [teacher, selectedCourseId]);
+  }, [fetchAnnouncements]);
 
-  // Show temporary success message
-  const showSuccess = (message) => {
-    setSuccessMessage(message);
-    setTimeout(() => setSuccessMessage(null), 3000);
+  const showSuccess = (msg) => {
+    setSuccessMsg(msg);
+    setTimeout(() => setSuccessMsg(null), 3000);
   };
 
-  // Delete announcement
-  const handleDelete = async (announcementId) => {
+  const handleDelete = async (id) => {
     try {
-      await api.delete(
-        `/api/announcements/deleteannouncement/${announcementId}`,
-      );
-      // Remove from local state
-      setAnnouncements((prev) => prev.filter((a) => a._id !== announcementId));
-      setDeleteConfirm(null);
-      showSuccess("Announcement deleted successfully");
+      await api.delete(`/api/announcements/deleteannouncement/${id}`);
+      setAnnouncements((prev) => prev.filter((a) => a._id !== id));
+      setDeleteConfirmId(null);
+      showSuccess("Announcement deleted");
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to delete announcement");
+      setError(err.response?.data?.message || "Delete failed");
       setTimeout(() => setError(null), 5000);
     }
   };
 
-  // Update announcement
-  const handleUpdate = async (announcementId) => {
+  const handleUpdate = async (id) => {
     if (!editText.trim()) {
-      setError("Announcement text cannot be empty");
-      setTimeout(() => setError(null), 5000);
+      setError("Text cannot be empty");
       return;
     }
-
     try {
-      const response = await api.put(
-        `/api/announcements/updateannouncement/${announcementId}`,
-        {
-          text: editText,
-        },
-      );
-      // Update local state with the updated announcement from response
-      const updatedAnn = response.data;
+      const res = await api.put(`/api/announcements/updateannouncement/${id}`, {
+        text: editText,
+      });
+      const updated = res.data;
       setAnnouncements((prev) =>
-        prev.map((a) => (a._id === updatedAnn._id ? updatedAnn : a)),
+        prev.map((a) => (a._id === updated._id ? updated : a)),
       );
-      setEditingAnnouncement(null);
+      setEditingId(null);
       setEditText("");
-      showSuccess("Announcement updated successfully");
+      showSuccess("Announcement updated");
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to update announcement");
+      setError(err.response?.data?.message || "Update failed");
       setTimeout(() => setError(null), 5000);
     }
   };
 
-  const startEditing = (announcement) => {
-    setEditingAnnouncement(announcement._id);
-    setEditText(announcement.text);
+  const startEdit = (ann) => {
+    setEditingId(ann._id);
+    setEditText(ann.text);
   };
 
-  const cancelEditing = () => {
-    setEditingAnnouncement(null);
+  const cancelEdit = () => {
+    setEditingId(null);
     setEditText("");
   };
 
-  const handleAnnouncementSubmit = async (data) => {
+  const handleCreate = async (data) => {
     try {
-      const response = await api.post(`/api/announcements/create`, {
+      const res = await api.post("/api/announcements/create", {
         teacher_id: teacher._id,
         course_id: data.course_id || selectedCourseId,
         text: data.description,
       });
-      const newAnnouncement = response.data;
-      // Add to local state (at the beginning)
-      setAnnouncements((prev) => [newAnnouncement, ...prev]);
-      setIsAnnouncementOpen(false);
-      showSuccess("Announcement created successfully");
+      const newAnn = res.data;
+      setAnnouncements((prev) => [newAnn, ...prev]);
+      setIsModalOpen(false);
+      showSuccess("Announcement created");
     } catch (err) {
-      console.error(err);
       setError("Failed to create announcement");
       setTimeout(() => setError(null), 5000);
     }
   };
 
+  // Authentication guard
   if (!teacher) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
-        <div className="text-center p-8 bg-white rounded-2xl shadow-xl border border-slate-200">
-          <div className="inline-flex p-4 bg-amber-50 rounded-full mb-4">
-            <LogIn className="h-12 w-12 text-amber-500" />
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
+        <div className="bg-white rounded-2xl border border-slate-100 p-8 text-center max-w-md w-full shadow-sm">
+          <div className="w-14 h-14 bg-amber-50 rounded-full flex items-center justify-center mx-auto mb-4">
+            <LogIn className="h-6 w-6 text-amber-500" />
           </div>
-          <h2 className="text-2xl font-semibold text-slate-800 mb-2">
+          <h2 className="text-lg font-semibold text-slate-800 mb-1">
             Authentication Required
           </h2>
-          <p className="text-slate-600">Please log in to view announcements</p>
+          <p className="text-slate-500 text-sm">
+            Please log in to view announcements
+          </p>
         </div>
       </div>
     );
@@ -163,239 +149,225 @@ const Page = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
         <div className="text-center">
-          <Loader2 className="h-12 w-12 text-blue-500 animate-spin mx-auto mb-4" />
-          <p className="text-slate-600 text-lg">Loading announcements...</p>
+          <Loader2 className="h-8 w-8 text-slate-400 animate-spin mx-auto mb-3" />
+          <p className="text-slate-500 text-sm">Loading announcements...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 py-8 px-4">
+    <div className="min-h-screen bg-slate-50 px-4 sm:px-6 lg:px-8 py-8">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
-        <div className="mb-8 text-center">
-          <div className="inline-flex p-3 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-2xl mb-4 shadow-lg">
-            <Megaphone className="h-8 w-8 text-white" />
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-12 h-12 bg-slate-800 rounded-xl mb-3 shadow-sm">
+            <Megaphone className="h-5 w-5 " />
           </div>
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
-            Announcements
-          </h1>
-          <p className="text-slate-600 mt-2">
-            Important updates and information for your class
+          <h1 className="text-2xl font-bold text-slate-800">Announcements</h1>
+          <p className="text-slate-500 text-sm mt-1">
+            Important updates for your courses
           </p>
+        </div>
 
-          <div className="flex flex-col items-center gap-4 mt-4">
-            {courses && courses.length > 0 && (
-              <div className="w-full max-w-xs">
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Select Course
-                </label>
+        {/* Controls Card */}
+        <div className="bg-white rounded-xl border border-slate-100 p-5 mb-6 shadow-sm">
+          <div className="flex flex-col sm:flex-row sm:items-end gap-4">
+            <div className="flex-1">
+              <label className="block text-xs font-medium text-slate-500 uppercase tracking-wider mb-1">
+                Select Course
+              </label>
+              <div className="relative">
                 <select
                   value={selectedCourseId}
                   onChange={(e) => setSelectedCourseId(e.target.value)}
-                  className="w-full p-2.5 bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all outline-none"
+                  className="w-full appearance-none bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-sm text-slate-700 focus:outline-none focus:ring-1 focus:ring-slate-300"
                 >
-                  {courses.map((course) => (
+                  {courses?.map((course) => (
                     <option key={course._id} value={course._id}>
                       {course.name} ({course.code})
                     </option>
                   ))}
                 </select>
               </div>
-            )}
-            <Button
-              onClick={() => setIsAnnouncementOpen(true)}
-              icon={Megaphone}
+            </div>
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-slate-800 hover:bg-slate-900 text-sm font-medium rounded-lg transition shadow-sm"
             >
-              Make An Announcement
-            </Button>
+              <Megaphone className="h-4 w-4" />
+              New Announcement
+            </button>
           </div>
         </div>
 
-        {/* Success Message */}
-        {successMessage && (
-          <div className="mb-6 p-4 bg-emerald-50 border-l-4 border-emerald-500 rounded-lg shadow-md animate-slide-down">
-            <div className="flex items-center">
-              <Check className="h-5 w-5 text-emerald-500 mr-2" />
-              <p className="text-emerald-800">{successMessage}</p>
-            </div>
+        {/* Success / Error toasts */}
+        {successMsg && (
+          <div className="mb-5 p-3 bg-emerald-50 border border-emerald-200 rounded-lg flex items-center gap-2 text-emerald-700 text-sm">
+            <Check className="h-4 w-4" />
+            {successMsg}
           </div>
         )}
-
-        {/* Error Message */}
         {error && (
-          <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 rounded-lg shadow-md animate-slide-down">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <AlertTriangle className="h-5 w-5 text-red-500 mr-2" />
-                <p className="text-red-800">{error}</p>
-              </div>
-              <button
-                onClick={() => setError(null)}
-                className="text-red-500 hover:text-red-700"
-              >
-                <X className="h-5 w-5" />
-              </button>
+          <div className="mb-5 p-3 bg-rose-50 border border-rose-200 rounded-lg flex items-center justify-between text-rose-700 text-sm">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4" />
+              {error}
             </div>
+            <button
+              onClick={() => setError(null)}
+              className="text-rose-500 hover:text-rose-700"
+            >
+              <X className="h-4 w-4" />
+            </button>
           </div>
         )}
 
-        {/* Announcements List */}
+        {/* Announcements list */}
         {announcements.length === 0 ? (
-          <div className="bg-white rounded-2xl shadow-xl p-12 text-center border border-slate-100">
-            <div className="inline-flex p-4 bg-slate-50 rounded-full mb-4">
-              <Megaphone className="h-12 w-12 text-slate-400" />
+          <div className="bg-white rounded-xl border border-slate-100 p-12 text-center shadow-sm">
+            <div className="w-14 h-14 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Megaphone className="h-6 w-6 text-slate-300" />
             </div>
-            <h3 className="text-xl font-semibold text-slate-700 mb-2">
-              No Announcements Yet
+            <h3 className="text-base font-semibold text-slate-700 mb-1">
+              No announcements
             </h3>
-            <p className="text-slate-500">
+            <p className="text-slate-400 text-sm">
               Create your first announcement using the button above.
             </p>
           </div>
         ) : (
-          <div className="space-y-6">
-            {announcements.map((announcement, index) => (
-              <div
-                key={announcement._id}
-                className="bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden border border-slate-100 animate-fade-in-up"
-                style={{ animationDelay: `${index * 100}ms` }}
-              >
-                {/* Delete Confirmation Dialog */}
-                {deleteConfirm === announcement._id && (
-                  <div className="bg-gradient-to-r from-amber-50 to-orange-50 p-5 border-b border-amber-200">
-                    <div className="flex items-start gap-3">
-                      <AlertTriangle className="h-6 w-6 text-amber-600 flex-shrink-0 mt-0.5" />
-                      <div className="flex-1">
-                        <p className="text-amber-800 font-medium mb-3">
-                          Are you sure you want to delete this announcement?
-                          This action cannot be undone.
-                        </p>
-                        <div className="flex gap-3">
+          <div className="space-y-5">
+            {announcements.map((ann) => {
+              const isEditing = editingId === ann._id;
+              const isDeleting = deleteConfirmId === ann._id;
+              const courseInfo = courses?.find((c) => c._id === ann.course_id);
+              return (
+                <div
+                  key={ann._id}
+                  className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden transition-all hover:shadow-md"
+                >
+                  {/* Delete confirmation inline */}
+                  {isDeleting && (
+                    <div className="bg-amber-50 p-4 border-b border-amber-100">
+                      <div className="flex items-start gap-3">
+                        <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                        <div className="flex-1">
+                          <p className="text-amber-800 text-sm font-medium mb-3">
+                            Delete this announcement? This cannot be undone.
+                          </p>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleDelete(ann._id)}
+                              className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700  text-xs font-medium rounded-lg"
+                            >
+                              Yes, delete
+                            </button>
+                            <button
+                              onClick={() => setDeleteConfirmId(null)}
+                              className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium rounded-lg"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="p-5">
+                    {isEditing ? (
+                      <div className="space-y-3">
+                        <textarea
+                          value={editText}
+                          onChange={(e) => setEditText(e.target.value)}
+                          rows={3}
+                          className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-slate-300 resize-none"
+                          autoFocus
+                        />
+                        <div className="flex gap-2">
                           <button
-                            onClick={() => handleDelete(announcement._id)}
-                            className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors duration-200 font-medium flex items-center gap-2"
+                            onClick={() => handleUpdate(ann._id)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-800  text-xs font-medium rounded-lg hover:bg-slate-700"
                           >
-                            <Trash2 className="h-4 w-4" />
-                            Yes, Delete
+                            <Check className="h-3.5 w-3.5" />
+                            Save
                           </button>
                           <button
-                            onClick={() => setDeleteConfirm(null)}
-                            className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-lg transition-colors duration-200 font-medium"
+                            onClick={cancelEdit}
+                            className="px-3 py-1.5 bg-slate-100 text-slate-600 text-xs font-medium rounded-lg hover:bg-slate-200"
                           >
                             Cancel
                           </button>
                         </div>
                       </div>
-                    </div>
-                  </div>
-                )}
-
-                <div className="p-6">
-                  {/* Edit Mode */}
-                  {editingAnnouncement === announcement._id ? (
-                    <div className="space-y-4">
-                      <textarea
-                        value={editText}
-                        onChange={(e) => setEditText(e.target.value)}
-                        className="w-full p-4 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 resize-none"
-                        rows="4"
-                        placeholder="Edit announcement..."
-                        autoFocus
-                      />
-                      <div className="flex gap-3">
-                        <button
-                          onClick={() => handleUpdate(announcement._id)}
-                          className="px-5 py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg transition-all duration-200 font-medium flex items-center gap-2 shadow-md hover:shadow-lg"
-                        >
-                          <Check className="h-4 w-4" />
-                          Save Changes
-                        </button>
-                        <button
-                          onClick={cancelEditing}
-                          className="px-5 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-lg transition-all duration-200 font-medium flex items-center gap-2"
-                        >
-                          <X className="h-4 w-4" />
-                          Cancel
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <>
-                      {/* Announcement Content */}
-                      <p className="text-slate-800 text-lg leading-relaxed mb-4">
-                        {announcement.text}
-                      </p>
-
-                      {/* Metadata */}
-                      <div className="flex flex-wrap gap-4 text-sm text-slate-500 mb-5 pb-4 border-b border-slate-100">
-                        <div className="flex items-center gap-1.5">
-                          <Clock className="h-4 w-4" />
-                          <span>
-                            Posted:{" "}
-                            {new Date(announcement.createdAt).toLocaleString()}
-                          </span>
-                        </div>
-                        {announcement.updatedAt &&
-                          announcement.updatedAt !== announcement.createdAt && (
-                            <div className="flex items-center gap-1.5">
-                              <RefreshCw className="h-4 w-4" />
-                              <span>
-                                Edited:{" "}
-                                {new Date(
-                                  announcement.updatedAt,
-                                ).toLocaleString()}
-                              </span>
-                            </div>
-                          )}
-                        {announcement.date && (
-                          <div className="flex items-center gap-1.5">
-                            <Calendar className="h-4 w-4" />
-                            <span>
-                              For:{" "}
-                              {new Date(announcement.date).toLocaleString()}
+                    ) : (
+                      <>
+                        {/* Course badge */}
+                        {courseInfo && (
+                          <div className="mb-3">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-slate-100 text-slate-600 text-xs font-medium rounded-full">
+                              <BookOpen className="h-3 w-3" />
+                              {courseInfo.name}
                             </span>
                           </div>
                         )}
-                      </div>
-
-                      {/* Action Buttons */}
-                      <div className="flex gap-3">
-                        <button
-                          onClick={() => startEditing(announcement)}
-                          className="px-4 py-2 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white rounded-lg transition-all duration-200 text-sm font-medium flex items-center gap-2 shadow-sm hover:shadow-md"
-                        >
-                          <Pencil className="h-4 w-4" />
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => setDeleteConfirm(announcement._id)}
-                          className="px-4 py-2 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-lg transition-all duration-200 text-sm font-medium flex items-center gap-2 shadow-sm hover:shadow-md"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                          Delete
-                        </button>
-                      </div>
-                    </>
-                  )}
+                        <p className="text-slate-700 text-base leading-relaxed mb-3">
+                          {ann.text}
+                        </p>
+                        <div className="flex flex-wrap items-center gap-3 text-xs text-slate-400 mb-4 pb-3 border-b border-slate-100">
+                          <div className="flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            {new Date(ann.createdAt).toLocaleString()}
+                          </div>
+                          {ann.updatedAt !== ann.createdAt && (
+                            <div className="flex items-center gap-1">
+                              <RefreshCw className="h-3 w-3" />
+                              edited
+                            </div>
+                          )}
+                          {ann.date && (
+                            <div className="flex items-center gap-1">
+                              <Calendar className="h-3 w-3" />
+                              {new Date(ann.date).toLocaleDateString()}
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => startEdit(ann)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 text-slate-600 text-xs font-medium rounded-lg hover:bg-slate-200 transition"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => setDeleteConfirmId(ann._id)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 text-rose-600 text-xs font-medium rounded-lg hover:bg-rose-100 transition"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                            Delete
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
+
       <AnnouncementModal
-        isOpen={isAnnouncementOpen}
-        onClose={() => setIsAnnouncementOpen(false)}
-        onSubmit={handleAnnouncementSubmit}
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSubmit={handleCreate}
         courses={courses}
         defaultCourseId={selectedCourseId}
       />
     </div>
   );
-};
-
-export default Page;
+}
