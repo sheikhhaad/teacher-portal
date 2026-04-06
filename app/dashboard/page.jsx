@@ -118,7 +118,7 @@ export default function Home() {
   return (
     <div className="w-full px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
       {/* Welcome Hero Section */}
-      <div className="bg-gradient-to-r from-slate-900 to-slate-800 rounded-2xl p-6 md:p-8 mb-8  shadow-lg">
+      <div className=" rounded-2xl p-6 md:p-8 mb-8  shadow-lg">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-5">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
