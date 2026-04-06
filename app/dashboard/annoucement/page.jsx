@@ -195,7 +195,7 @@ export default function AnnouncementsPage() {
             </div>
             <button
               onClick={() => setIsModalOpen(true)}
-              className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-slate-800 hover:bg-slate-900 text-sm font-medium rounded-lg transition shadow-sm"
+              className="inline-flex items-center justify-center gap-2 px-5 py-2.5 hover:bg-slate-900 text-sm font-medium rounded-lg transition shadow-sm"
             >
               <Megaphone className="h-4 w-4" />
               New Announcement
