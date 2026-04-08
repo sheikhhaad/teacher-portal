@@ -103,7 +103,7 @@ export function SessionProvider({ children }) {
           m._id === id ? { ...m, status, updatedAt: new Date() } : m
         )
       );
-      const res = await api.put(`/api/session/${id}`, { status });
+      const res = await api.put(`/api/session/update/${id}`, { status });
       setMeetings((prev) => prev.map((m) => (m._id === id ? res.data : m)));
       return res.data;
     } catch (err) {

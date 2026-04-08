@@ -9,6 +9,7 @@ import {
   CheckCircle,
   Zap,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 const MONTHS = [
   "Jan",
@@ -65,6 +66,7 @@ const statusMeta = {
 export default function MeetingCard({ meeting, onAccept }) {
   const [isAccepting, setIsAccepting] = useState(false);
   const now = Date.now();
+  const router = useRouter();
 
   const start = new Date(meeting.session_start);
   const end = new Date(meeting.session_end);
@@ -163,9 +165,7 @@ export default function MeetingCard({ meeting, onAccept }) {
         <div className="flex flex-col sm:flex-row gap-3 shrink-0">
           {meeting.meeting_link && status !== "expired" && (
             <a
-              href={meeting.meeting_link}
-              target="_blank"
-              rel="noopener noreferrer"
+              onClick={() => router.push(`/dashboard/meetings/${meeting._id}`)}
               className="premium-gradient inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-white transition-all hover:-translate-y-0.5 active:translate-y-0"
             >
               <Video size={16} />

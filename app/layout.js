@@ -7,6 +7,7 @@ import { EnrollMentProvider } from "./context/EnrollStuContext";
 import { ChatProvider } from "./context/ChatContext";
 import { NotificationProvider } from "./context/NotificationContext";
 import { Toaster } from "react-hot-toast";
+import Script from "next/script";
 
 export const metadata = {
   title: "Teacher Portal",
@@ -17,6 +18,10 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body>
+        <Script
+          src="https://meet.jit.si/external_api.js"
+          strategy="beforeInteractive" // or "lazyOnload" if not needed immediately
+        />
         <TeacherProvider>
           <EnrollMentProvider>
             <CourseProvider>
@@ -30,11 +35,10 @@ export default function RootLayout({ children }) {
                   </ChatProvider>
                 </SessionProvider>
               </QueryProvider>
-              </CourseProvider>
+            </CourseProvider>
           </EnrollMentProvider>
         </TeacherProvider>
       </body>
     </html>
   );
 }
-

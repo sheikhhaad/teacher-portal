@@ -101,13 +101,6 @@ export default function MeetingsPage() {
             >
               {refreshing ? "Refreshing..." : "Refresh"}
             </Button>
-            <Button
-              variant="primary"
-              onClick={() => router.push("/dashboard/slots")}
-              icon={Plus}
-            >
-              Add Availability Slots
-            </Button>
           </div>
         </div>
 

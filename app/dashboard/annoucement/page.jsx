@@ -290,7 +290,7 @@ export default function AnnouncementsPage() {
                         <div className="flex gap-2">
                           <button
                             onClick={() => handleUpdate(ann._id)}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg hover:bg-slate-700 text-white"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg hover:bg-slate-700 "
                           >
                             <Check className="h-3.5 w-3.5" />
                             Save
