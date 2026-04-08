@@ -18,9 +18,10 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body>
-        <Script
-          src="https://meet.jit.si/external_api.js"
-          strategy="beforeInteractive" // or "lazyOnload" if not needed immediately
+       <Script
+          src='https://8x8.vc/vpaas-magic-cookie-dcf276331a0c4225821d9c60bd0aeb93/external_api.js'
+          strategy="lazyOnload"
+          async
         />
         <TeacherProvider>
           <EnrollMentProvider>
