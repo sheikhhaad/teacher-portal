@@ -32,11 +32,12 @@ const Page = () => {
   const [selectedQuery, setSelectedQuery] = useState(null);
   const [answer, setAnswer] = useState("");
   const [isUpdating, setIsUpdating] = useState(false);
-
+  const [studentDetails, setStudentDetails] = useState({});
   const courseQueries = useMemo(
     () => queries.filter((q) => q.course_id === id),
     [queries, id],
   );
+
 
   // Initial fetch
   useEffect(() => {
@@ -88,6 +89,26 @@ const Page = () => {
       setIsUpdating(false);
     }
   };
+
+useEffect(() => {
+  if (!queries) return;
+console.log(queries);
+
+  const fetchStudentinfo = async () => {
+    queries.forEach(async (query) => {
+      const res = await api.get(`/api/auth/student/${query.student_id}`);
+      console.log(res.data.student);
+      setStudentDetails((prev) => ({
+        ...prev,
+        [query.student_id]: res.data.student,
+      }));
+    });
+  };
+
+  fetchStudentinfo();
+}, [queries]);
+
+
 
   const pendingCount = courseQueries.filter(
     (q) => q.status === "pending",
@@ -195,6 +216,9 @@ const Page = () => {
                           </span>
                           <span className="text-xs text-gray-400">
                             {new Date(q.createdAt).toLocaleDateString()}
+                          </span>
+                          <span className="text-xs text-gray-400" style={{color:"#000",fontWeight:"bold"}}>
+                            {studentDetails[q.student_id]?.name}
                           </span>
                         </div>
 

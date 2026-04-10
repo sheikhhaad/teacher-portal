@@ -112,7 +112,6 @@ export default function Home() {
   const stats = [
     { label: "Active Courses", value: courses.length, icon: BookOpen, color: "text-blue-600 bg-blue-50" },
     { label: "Total Students", value: totalStudents, icon: Users, color: "text-emerald-600 bg-emerald-50" },
-    { label: "Completion Rate", value: "—", icon: TrendingUp, color: "text-amber-600 bg-amber-50" },
   ];
 
   return (
@@ -146,9 +145,13 @@ export default function Home() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-8">
         {stats.map((stat, idx) => (
-          <div key={stat.label} className="bg-white rounded-xl border border-slate-100 p-5 shadow-sm hover:shadow-md transition">
+          <div 
+            key={stat.label} 
+            onClick={() => stat.label === "Total Students" && router.push("/dashboard/students")}
+            className={`bg-white rounded-xl border border-slate-100 p-5 shadow-sm hover:shadow-md transition ${stat.label === "Total Students" ? "cursor-pointer hover:border-emerald-200" : ""}`}
+          >
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-slate-400 text-xs font-medium uppercase tracking-wider">{stat.label}</p>
