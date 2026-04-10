@@ -37,8 +37,6 @@ export default function ProfilePage() {
   const fileInputRef = useRef(null);
   const [selectedFile, setSelectedFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
-  console.log(teacher.profilePic
-);
   // Initialize form data when entering edit mode or when teacher data loads
   useEffect(() => {
     if (teacher) {
@@ -152,7 +150,7 @@ export default function ProfilePage() {
               <div className="w-32 h-32 sm:w-40 sm:h-40 rounded-full bg-white p-2 shadow-2xl overflow-hidden ring-4 ring-white/20">
                 {(previewUrl || teacher.profilePic) ? (
                   <img
-                    src={previewUrl || teacher.profilePic}
+                    src={previewUrl || teacher.profilePic || ""}
                     alt={teacher.name}
                     className="w-full h-full object-cover rounded-full"
                   />
