@@ -7,8 +7,6 @@ import {
   Users,
   Video,
   BookOpen,
-  Settings,
-  LogOut,
   Calendar,
   Bell,
   MessageCircle,
@@ -32,7 +30,7 @@ const SIDEBAR_LINKS = [
 
 export default function Sidebar({ isOpen, onClose }) {
   const pathname = usePathname();
-  const { teacher, logout } = useTeacher();
+  const { teacher } = useTeacher();
   const { courses } = useCourse();
 
   // Simple active check
@@ -130,19 +128,7 @@ export default function Sidebar({ isOpen, onClose }) {
         })}
       </div>
 
-      {/* Footer Profile / Logout */}
-      <div className="px-4 py-6 border-t border-gray-50/50">
-        <button
-          onClick={logout}
-          className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl font-semibold text-gray-600 hover:bg-red-50 hover:text-red-700 transition-colors group"
-        >
-          <LogOut
-            size={20}
-            className="text-gray-400 group-hover:text-red-500 transition-colors"
-          />
-          Sign Out
-        </button>
-      </div>
+   
     </aside>
   );
 }

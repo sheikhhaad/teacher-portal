@@ -30,7 +30,13 @@ const CourseCard = ({ course, studentCount }) => {
             <span>{course.code || "N/A"}</span>
           </div>
           {studentCount !== undefined && (
-            <div className="flex items-center gap-1.5 bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded-full text-xs font-bold border border-indigo-100">
+            <div 
+              onClick={(e) => {
+                e.stopPropagation();
+                router.push(`/dashboard/course/${course._id}/students`);
+              }}
+              className="flex items-center gap-1.5 bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded-full text-xs font-bold border border-indigo-100 hover:bg-indigo-100 transition-colors"
+            >
               <Users size={14} />
               <span>
                 {studentCount} {studentCount === 1 ? "Student" : "Students"}

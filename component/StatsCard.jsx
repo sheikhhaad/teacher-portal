@@ -5,6 +5,7 @@ export default function StatsCard({
   value,
   accent,
   color,
+  onClick,
 }) {
   // Support both new (label, accent) and legacy (title, color) props
   const displayLabel = label || title;
@@ -27,7 +28,10 @@ export default function StatsCard({
             : displayAccent;
 
   return (
-    <div className="relative overflow-hidden rounded-3xl p-6 flex items-center gap-5 bg-white premium-panel">
+    <div 
+      onClick={onClick}
+      className={`relative overflow-hidden rounded-3xl p-6 flex items-center gap-5 bg-white premium-panel ${onClick ? "cursor-pointer hover:shadow-lg transition-all active:scale-95" : ""}`}
+    >
       {/* coloured left bar */}
       <div
         className="absolute left-0 top-0 bottom-0 w-1 rounded-l-3xl"

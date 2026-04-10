@@ -12,6 +12,7 @@ import {
   AlertCircle,
   Send,
   ArrowLeft,
+  Users,
 } from "lucide-react";
 import StatsCard from "@/component/StatsCard";
 import Button from "@/component/Button";
@@ -33,11 +34,12 @@ const Page = () => {
   const [answer, setAnswer] = useState("");
   const [isUpdating, setIsUpdating] = useState(false);
   const [studentDetails, setStudentDetails] = useState({});
+  const [totalStudentsCount, setTotalStudentsCount] = useState(0);
+
   const courseQueries = useMemo(
     () => queries.filter((q) => q.course_id === id),
     [queries, id],
   );
-
 
   // Initial fetch
   useEffect(() => {
@@ -46,8 +48,19 @@ const Page = () => {
       await fetchCourseQueries(id, teacher?._id);
       setIsInitializing(false);
     };
+
+    const fetchStudentsCount = async () => {
+      try {
+        const res = await api.get(`/api/enrollments/course/${id}`);
+        if (res.data?.students) setTotalStudentsCount(res.data.students.length);
+      } catch (err) {
+        console.error("Error fetching student count:", err);
+      }
+    };
+
     if (id && teacher?._id) {
       initQueries();
+      fetchStudentsCount();
     }
   }, [id, teacher?._id, fetchCourseQueries]);
 
@@ -90,25 +103,23 @@ const Page = () => {
     }
   };
 
-useEffect(() => {
-  if (!queries) return;
-console.log(queries);
+  useEffect(() => {
+    if (!queries) return;
+    console.log(queries);
 
-  const fetchStudentinfo = async () => {
-    queries.forEach(async (query) => {
-      const res = await api.get(`/api/auth/student/${query.student_id}`);
-      console.log(res.data.student);
-      setStudentDetails((prev) => ({
-        ...prev,
-        [query.student_id]: res.data.student,
-      }));
-    });
-  };
+    const fetchStudentinfo = async () => {
+      queries.forEach(async (query) => {
+        const res = await api.get(`/api/auth/student/${query.student_id}`);
+        console.log(res.data.student);
+        setStudentDetails((prev) => ({
+          ...prev,
+          [query.student_id]: res.data.student,
+        }));
+      });
+    };
 
-  fetchStudentinfo();
-}, [queries]);
-
-
+    fetchStudentinfo();
+  }, [queries]);
 
   const pendingCount = courseQueries.filter(
     (q) => q.status === "pending",
@@ -153,27 +164,35 @@ console.log(queries);
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-6">
+          <StatsCard
+            icon={Users}
+            title="Total Students"
+            value={totalStudentsCount}
+            color="bg-emerald-600"
+            delay={100}
+            onClick={() => router.push(`/dashboard/course/${id}/students`)}
+          />
           <StatsCard
             icon={MessageSquare}
             title="Total Queries"
             value={totalCount}
             color="bg-indigo-600"
-            delay={100}
+            delay={200}
           />
           <StatsCard
             icon={Clock}
             title="Pending Requests"
             value={pendingCount}
             color="bg-amber-500"
-            delay={200}
+            delay={300}
           />
           <StatsCard
             icon={CheckCircle}
             title="Resolved"
             value={resolvedCount}
-            color="bg-emerald-600"
-            delay={300}
+            color="bg-blue-600"
+            delay={400}
           />
         </div>
 
@@ -217,7 +236,10 @@ console.log(queries);
                           <span className="text-xs text-gray-400">
                             {new Date(q.createdAt).toLocaleDateString()}
                           </span>
-                          <span className="text-xs text-gray-400" style={{color:"#000",fontWeight:"bold"}}>
+                          <span
+                            className="text-xs text-gray-400"
+                            style={{ color: "#000", fontWeight: "bold" }}
+                          >
                             {studentDetails[q.student_id]?.name}
                           </span>
                         </div>
