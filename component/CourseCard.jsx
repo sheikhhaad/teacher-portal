@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
-const CourseCard = ({ course, studentCount }) => {
+const CourseCard = ({ course }) => {
   const daysArray = course?.days?.split(",") || [];
   const router = useRouter();
 
@@ -29,20 +29,6 @@ const CourseCard = ({ course, studentCount }) => {
             <Hash size={16} />
             <span>{course.code || "N/A"}</span>
           </div>
-          {studentCount !== undefined && (
-            <div 
-              onClick={(e) => {
-                e.stopPropagation();
-                router.push(`/dashboard/course/${course._id}/students`);
-              }}
-              className="flex items-center gap-1.5 bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded-full text-xs font-bold border border-indigo-100 hover:bg-indigo-100 transition-colors"
-            >
-              <Users size={14} />
-              <span>
-                {studentCount} {studentCount === 1 ? "Student" : "Students"}
-              </span>
-            </div>
-          )}
         </div>
         <div className="text-xs text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
           ID: {course._id?.slice(-6) || "N/A"}

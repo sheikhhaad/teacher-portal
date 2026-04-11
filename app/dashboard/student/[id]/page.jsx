@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   MessageSquare,
@@ -11,6 +11,7 @@ import {
   User,
   Mail,
   Phone,
+  RefreshCw,
 } from "lucide-react";
 import { useQueries } from "@/app/context/QueryContext";
 import api from "@/utils/api";
@@ -22,67 +23,95 @@ import { useCourse } from "@/app/context/CourseContext";
 const StudentQueriesPage = () => {
   const { id } = useParams();
   const router = useRouter();
-  const { queries, loading: queriesLoading } = useQueries();
-  const { courses, loading: coursesLoading } = useCourse();
+  const { queries, loading: queriesLoading, refetchQueries } = useQueries();
+  const { courses, loading: coursesLoading, refetchCourses } = useCourse();
 
   const [student, setStudent] = useState(null);
   const [studentLoading, setStudentLoading] = useState(true);
+  const [studentError, setStudentError] = useState(null);
   const [studentQueries, setStudentQueries] = useState([]);
 
-  // Fetch student details
-  useEffect(() => {
-    const fetchStudent = async () => {
-      if (!id) return;
-      try {
-        const res = await api.get(`/api/auth/student/${id}`);
-        setStudent(res.data.student);
-      } catch (err) {
-        console.error("Failed to fetch student:", err);
-      } finally {
-        setStudentLoading(false);
-      }
-    };
-    fetchStudent();
+  // Fetch student details – with proper handling of undefined id
+  const fetchStudent = useCallback(async () => {
+    // If id is not available yet, keep loading true and wait
+    if (!id) {
+      setStudentLoading(true);
+      return;
+    }
+
+    try {
+      setStudentLoading(true);
+      setStudentError(null);
+      const res = await api.get(`/api/auth/student/${id}`);
+      setStudent(res.data.student);
+    } catch (err) {
+      console.error("Failed to fetch student:", err);
+      setStudentError(err.response?.data?.message || "Failed to load student profile");
+      setStudent(null);
+    } finally {
+      setStudentLoading(false);
+    }
   }, [id]);
 
   // Filter queries for this student and attach course title
-  useEffect(() => {
-    if (queries && id && courses.length > 0) {
-      const filtered = queries.filter(
-        (q) => String(q.student_id) === String(id),
-      );
-      const enhanced = filtered.map((q) => {
-        const course = courses.find(
-          (c) => String(c._id) === String(q.course_id),
-        );
-        return { ...q, course_title: course?.name || "Unknown Course" };
-      });
-      setStudentQueries(enhanced);
-    } else if (queries && id && !coursesLoading && courses.length === 0) {
-      // Courses loaded but empty – still show queries with fallback
-      const filtered = queries.filter(
-        (q) => String(q.student_id) === String(id),
-      );
-      const enhanced = filtered.map((q) => ({
-        ...q,
-        course_title: "Unknown Course",
-      }));
-      setStudentQueries(enhanced);
-    }
-  }, [queries, id, courses, coursesLoading]);
+  const updateStudentQueries = useCallback(() => {
+    if (!queries || !id) return;
 
-  const pendingCount = studentQueries.filter(
-    (q) => q.status === "pending",
-  ).length;
-  const resolvedCount = studentQueries.filter(
-    (q) => q.status === "resolved",
-  ).length;
+    const filtered = queries.filter((q) => String(q.student_id) === String(id));
+    const enhanced = filtered.map((q) => {
+      const course = courses?.find((c) => String(c._id) === String(q.course_id));
+      return { ...q, course_title: course?.name || "Unknown Course" };
+    });
+    setStudentQueries(enhanced);
+  }, [queries, id, courses]);
+
+  // Initial fetch and refetch when id changes
+  useEffect(() => {
+    fetchStudent();
+  }, [fetchStudent]);
+
+  // Update queries list whenever relevant data changes
+  useEffect(() => {
+    updateStudentQueries();
+  }, [updateStudentQueries]);
+
+  // Manual refresh for all data
+  const handleRefresh = async () => {
+    await Promise.all([
+      fetchStudent(),
+      refetchQueries?.(),
+      refetchCourses?.(),
+    ]);
+  };
+
+  const pendingCount = studentQueries.filter((q) => q.status === "pending").length;
+  const resolvedCount = studentQueries.filter((q) => q.status === "resolved").length;
   const totalCount = studentQueries.length;
 
+  // Show loading while student is being fetched (including waiting for id)
   if (studentLoading) {
     return <Loading message="Loading student profile..." />;
   }
 
+  // Show error if student fetch failed
+  if (studentError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <div className="text-center space-y-4">
+          <StateMessage
+            icon={AlertCircle}
+            title="Unable to load student"
+            description={studentError}
+          />
+          <Button onClick={handleRefresh} variant="primary" icon={RefreshCw}>
+            Try Again
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // If id is valid but student is null (should not happen if error is handled)
   if (!student) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -104,8 +133,8 @@ const StudentQueriesPage = () => {
   return (
     <div className="min-h-screen bg-gray-50/30 p-4 sm:p-6 lg:p-8">
       <div className="max-w-6xl mx-auto space-y-8">
-        {/* Header with back button */}
-        <div className="flex items-center justify-between">
+        {/* Header with back button and refresh */}
+        <div className="flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-4">
             <Button
               variant="secondary"
@@ -114,24 +143,28 @@ const StudentQueriesPage = () => {
               icon={ArrowLeft}
             />
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">
-                Student Profile
-              </h1>
-              <p className="text-sm text-gray-500">
-                Manage and view student details
-              </p>
+              <h1 className="text-2xl font-bold text-gray-900">Student Profile</h1>
+              <p className="text-sm text-gray-500">Manage and view student details</p>
             </div>
           </div>
+          <Button
+            variant="outline"
+            onClick={handleRefresh}
+            icon={RefreshCw}
+            disabled={studentLoading || queriesLoading || coursesLoading}
+          >
+            Refresh
+          </Button>
         </div>
 
-        {/* Enhanced Student Info Card */}
+        {/* Student Info Card */}
         <div className="relative overflow-hidden bg-white rounded-3xl shadow-sm border border-gray-100">
+          {/* ... (keep your existing student card JSX unchanged) ... */}
           <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50 rounded-full -translate-y-16 translate-x-16 blur-2xl opacity-50" />
           <div className="absolute bottom-0 left-0 w-24 h-24 bg-violet-50 rounded-full translate-y-12 -translate-x-12 blur-2xl opacity-50" />
           
           <div className="relative p-6 sm:p-8">
             <div className="flex flex-col md:flex-row items-center md:items-start gap-8">
-              {/* Profile Image */}
               <div className="relative">
                 <div className="w-32 h-32 rounded-2xl bg-gradient-to-br from-indigo-50 to-indigo-100 p-1 shadow-lg ring-1 ring-black/5">
                   {student.profilePic ? (
@@ -149,7 +182,6 @@ const StudentQueriesPage = () => {
                 <div className="absolute -bottom-2 -right-2 bg-emerald-500 w-6 h-6 rounded-full border-4 border-white shadow-sm" />
               </div>
 
-              {/* Student Details */}
               <div className="flex-1 text-center md:text-left space-y-4">
                 <div>
                   <h2 className="text-3xl font-black text-gray-900 tracking-tight">
@@ -208,7 +240,7 @@ const StudentQueriesPage = () => {
           </div>
         </div>
 
-        {/* Stats */}
+        {/* Stats Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
           <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
             <div className="flex items-center justify-between">
@@ -223,9 +255,7 @@ const StudentQueriesPage = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-500 text-sm">Pending</p>
-                <p className="text-3xl font-bold text-amber-600">
-                  {pendingCount}
-                </p>
+                <p className="text-3xl font-bold text-amber-600">{pendingCount}</p>
               </div>
               <Clock className="text-amber-500" size={32} />
             </div>
@@ -234,9 +264,7 @@ const StudentQueriesPage = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-500 text-sm">Resolved</p>
-                <p className="text-3xl font-bold text-emerald-600">
-                  {resolvedCount}
-                </p>
+                <p className="text-3xl font-bold text-emerald-600">{resolvedCount}</p>
               </div>
               <CheckCircle className="text-emerald-500" size={32} />
             </div>
@@ -245,20 +273,25 @@ const StudentQueriesPage = () => {
 
         {/* Queries List */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="flex items-center justify-between p-6 border-b border-gray-100">
+          <div className="flex items-center justify-between p-6 border-b border-gray-100 flex-wrap gap-3">
             <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
               <AlertCircle size={18} className="text-indigo-600" />
               Query History
             </h3>
-            <button className="bg-indigo-600 text-white px-4 py-2 rounded-lg" onClick={() => router.push(`/dashboard/discuss/${student._id}`)}>Chat with Student</button>
+            <Button
+              onClick={() => router.push(`/dashboard/discuss/${student._id}`)}
+              variant="primary"
+            >
+              Chat with Student
+            </Button>
           </div>
 
           <div className="p-6">
-            {queriesLoading || coursesLoading ? (
-               <div className="flex flex-col items-center justify-center py-12 space-y-4">
-                 <div className="animate-spin rounded-full h-10 w-10 border-4 border-indigo-100 border-t-indigo-600" />
-                 <p className="text-sm text-gray-500 font-medium">Loading query history...</p>
-               </div>
+            {(queriesLoading || coursesLoading) && studentQueries.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 space-y-4">
+                <div className="animate-spin rounded-full h-10 w-10 border-4 border-indigo-100 border-t-indigo-600" />
+                <p className="text-sm text-gray-500 font-medium">Loading query history...</p>
+              </div>
             ) : studentQueries.length === 0 ? (
               <StateMessage
                 icon={MessageSquare}
@@ -270,40 +303,26 @@ const StudentQueriesPage = () => {
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Course
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Question
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Status
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Response
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Date
-                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Course</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Question</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Response</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
                     {studentQueries.map((q) => (
                       <tr key={q._id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                          {q.course_title}
-                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{q.course_title}</td>
                         <td className="px-6 py-4 text-sm text-gray-700 max-w-md">
                           <div className="truncate">{q.query}</div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span
-                            className={`px-2 py-1 rounded-full text-xs font-bold ${
-                              q.status === "resolved"
-                                ? "bg-emerald-100 text-emerald-700"
-                                : "bg-amber-100 text-amber-700"
-                            }`}
-                          >
+                          <span className={`px-2 py-1 rounded-full text-xs font-bold ${
+                            q.status === "resolved"
+                              ? "bg-emerald-100 text-emerald-700"
+                              : "bg-amber-100 text-amber-700"
+                          }`}>
                             {q.status}
                           </span>
                         </td>
