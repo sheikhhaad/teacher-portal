@@ -23,9 +23,16 @@ function ChangePasswordForm() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="bg-white p-8 rounded-lg shadow-md text-center">
-          <p className="text-red-600 mb-4">Invalid request. Email is required.</p>
-          <p className="text-xs text-gray-400 mb-4">Debug: No email found in URL</p>
-          <Link href="/auth/forgot-password" className="text-blue-600 hover:underline">
+          <p className="text-red-600 mb-4">
+            Invalid request. Email is required.
+          </p>
+          <p className="text-xs text-gray-400 mb-4">
+            Debug: No email found in URL
+          </p>
+          <Link
+            href="/auth/forgot-password"
+            className="text-blue-600 hover:underline"
+          >
             Go back to forgot password
           </Link>
         </div>
@@ -35,10 +42,14 @@ function ChangePasswordForm() {
 
   const validatePassword = (password) => {
     if (password.length < 8) return "Password must be at least 8 characters";
-    if (!/[A-Z]/.test(password)) return "Password must contain at least one uppercase letter";
-    if (!/[a-z]/.test(password)) return "Password must contain at least one lowercase letter";
-    if (!/[0-9]/.test(password)) return "Password must contain at least one number";
-    if (!/[!@#$%^&*]/.test(password)) return "Password must contain at least one special character (!@#$%^&*)";
+    if (!/[A-Z]/.test(password))
+      return "Password must contain at least one uppercase letter";
+    if (!/[a-z]/.test(password))
+      return "Password must contain at least one lowercase letter";
+    if (!/[0-9]/.test(password))
+      return "Password must contain at least one number";
+    if (!/[!@#$%^&*]/.test(password))
+      return "Password must contain at least one special character (!@#$%^&*)";
     return null;
   };
 
@@ -70,7 +81,10 @@ function ChangePasswordForm() {
         password: newPassword,
       });
 
-      setMessage({ type: "success", text: "Password changed successfully! Redirecting to login..." });
+      setMessage({
+        type: "success",
+        text: "Password changed successfully! Redirecting to login...",
+      });
 
       setTimeout(() => {
         router.push("/auth/login");
@@ -78,7 +92,9 @@ function ChangePasswordForm() {
     } catch (err) {
       setMessage({
         type: "error",
-        text: err.response?.data?.message || "Failed to reset password. Please try again.",
+        text:
+          err.response?.data?.message ||
+          "Failed to reset password. Please try again.",
       });
     } finally {
       setLoading(false);
@@ -97,7 +113,9 @@ function ChangePasswordForm() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4">
       <div className="max-w-md w-full bg-white rounded-lg shadow-md p-8">
         <div className="text-center mb-8">
-          <h2 className="text-2xl font-bold text-gray-900">Create New Password</h2>
+          <h2 className="text-2xl font-bold text-gray-900">
+            Create New Password
+          </h2>
           <p className="text-sm text-gray-600 mt-2">
             Reset password for <span className="font-medium">{email}</span>
           </p>
@@ -121,7 +139,11 @@ function ChangePasswordForm() {
                 onClick={() => setShowPassword(!showPassword)}
                 className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600"
               >
-                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                {showPassword ? (
+                  <EyeOff className="h-4 w-4" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
               </button>
             </div>
           </div>
@@ -143,13 +165,19 @@ function ChangePasswordForm() {
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                 className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600"
               >
-                {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                {showConfirmPassword ? (
+                  <EyeOff className="h-4 w-4" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
               </button>
             </div>
           </div>
 
           <div className="bg-gray-50 rounded-md p-3 space-y-2">
-            <p className="text-xs font-medium text-gray-700">Password requirements:</p>
+            <p className="text-xs font-medium text-gray-700">
+              Password requirements:
+            </p>
             <ul className="space-y-1.5">
               <li className="flex items-center text-xs">
                 {passwordChecks.length ? (
@@ -157,7 +185,11 @@ function ChangePasswordForm() {
                 ) : (
                   <XCircle className="h-3.5 w-3.5 text-gray-400 mr-2" />
                 )}
-                <span className={passwordChecks.length ? "text-green-700" : "text-gray-600"}>
+                <span
+                  className={
+                    passwordChecks.length ? "text-green-700" : "text-gray-600"
+                  }
+                >
                   At least 8 characters
                 </span>
               </li>
@@ -167,7 +199,13 @@ function ChangePasswordForm() {
                 ) : (
                   <XCircle className="h-3.5 w-3.5 text-gray-400 mr-2" />
                 )}
-                <span className={passwordChecks.uppercase ? "text-green-700" : "text-gray-600"}>
+                <span
+                  className={
+                    passwordChecks.uppercase
+                      ? "text-green-700"
+                      : "text-gray-600"
+                  }
+                >
                   One uppercase letter (A-Z)
                 </span>
               </li>
@@ -177,7 +215,13 @@ function ChangePasswordForm() {
                 ) : (
                   <XCircle className="h-3.5 w-3.5 text-gray-400 mr-2" />
                 )}
-                <span className={passwordChecks.lowercase ? "text-green-700" : "text-gray-600"}>
+                <span
+                  className={
+                    passwordChecks.lowercase
+                      ? "text-green-700"
+                      : "text-gray-600"
+                  }
+                >
                   One lowercase letter (a-z)
                 </span>
               </li>
@@ -187,7 +231,11 @@ function ChangePasswordForm() {
                 ) : (
                   <XCircle className="h-3.5 w-3.5 text-gray-400 mr-2" />
                 )}
-                <span className={passwordChecks.number ? "text-green-700" : "text-gray-600"}>
+                <span
+                  className={
+                    passwordChecks.number ? "text-green-700" : "text-gray-600"
+                  }
+                >
                   One number (0-9)
                 </span>
               </li>
@@ -197,7 +245,11 @@ function ChangePasswordForm() {
                 ) : (
                   <XCircle className="h-3.5 w-3.5 text-gray-400 mr-2" />
                 )}
-                <span className={passwordChecks.special ? "text-green-700" : "text-gray-600"}>
+                <span
+                  className={
+                    passwordChecks.special ? "text-green-700" : "text-gray-600"
+                  }
+                >
                   One special character (!@#$%^&*)
                 </span>
               </li>
@@ -257,7 +309,13 @@ function ChangePasswordForm() {
 
 export default function ChangePasswordPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center">
+          Loading...
+        </div>
+      }
+    >
       <ChangePasswordForm />
     </Suspense>
   );
